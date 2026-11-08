@@ -2,7 +2,7 @@ import { World } from './world.js';
 import { loadContent, isPreview } from './content.js';
 import { sfx } from './sfx.js';
 import { icon, hydrateIcons } from './icons.js';
-import { SongPlayer, detectStart, SNIPPET_STEPS } from './song.js';
+import { SongPlayer, detectStart, SNIPPET_STEPS, LEVEL, levelVideo } from './song.js';
 
 hydrateIcons();
 
@@ -20,7 +20,7 @@ document.title = `For ${S.herName}`;
 if (isPreview()) document.body.insertAdjacentHTML('beforeend', '<div class="preview-badge">PREVIEW · not published</div>');
 
 const world = new World($('#scene'), content);
-if (params.has('debug')) { window.__world = world; window.__dbg = { get song() { return song; }, get music() { return music; } }; }
+if (params.has('debug')) { window.__world = world; window.__dbg = { get song() { return song; }, get music() { return music; }, get bgm() { return bgm; } }; }
 await Promise.race([world.landReady, sleep(2500)]);
 $('#loading').classList.add('done');
 
@@ -29,12 +29,20 @@ window.addEventListener('pointerdown', () => sfx.ensure(), { once: true });
 window.addEventListener('keydown', () => sfx.ensure(), { once: true });
 
 // ---------- music + mute ----------
-const music = $('#music');
+// background music: a looping, loudness-normalised player at a slightly-lower-than-normal level
+let bgm = null;
+const music = {
+  get paused() { return !bgm || bgm.paused; },
+  play() { if (!bgm || !soundOn) return Promise.resolve(); bgm.resume(0.8); return Promise.resolve(); },
+  pause() { bgm?.pause(0.3); },
+  set muted(m) { bgm?.setMuted(m); },
+};
 let soundOn = true;
 function startMusic() {
   if (!S.music) return;
-  music.src = S.music; music.volume = 0.5; music.muted = !soundOn;
-  music.play().catch(() => {});
+  if (!bgm) bgm = new SongPlayer(S.music, { level: LEVEL.background, loop: true });
+  bgm.setMuted(!soundOn);
+  if (bgm.paused) bgm.play(0, null, null, 1.5);
 }
 $('#mute-btn').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -459,6 +467,16 @@ function showFinale() {
   $('#letter-body').innerHTML = (f.letter || []).map((p) => `<p>${esc(p)}</p>`).join('');
   $('#letter-sign').textContent = f.signature;
   $('#video-wrap').innerHTML = videoHTML(f.video);
+  // the video plays at normal level and the background music steps aside while it plays
+  const vid = $('#video-wrap video');
+  if (vid) {
+    vid.addEventListener('play', () => { sfx.ensure(); levelVideo(vid); music.pause(); });
+    ['pause', 'ended'].forEach((ev) => vid.addEventListener(ev, () => { if (S.music && soundOn) music.play(); }));
+  }
+  // YouTube / Drive embeds: we can't see their play button, but tapping into the frame moves focus to it
+  if ($('#video-wrap iframe')) {
+    window.addEventListener('blur', () => { setTimeout(() => { if (document.activeElement?.tagName === 'IFRAME') music.pause(); }, 0); });
+  }
   $('#closing').innerHTML = `${esc(f.closing)} ${icon('heart', { cls: 'closing-heart' })}`;
   const n = world.starsCollected;
   $('#finale-stats').innerHTML = n ? `${icon('star')} ${n} stars caught = ${n} I-love-yous I owe you` : '';
