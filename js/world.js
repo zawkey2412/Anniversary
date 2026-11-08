@@ -8,7 +8,8 @@ const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
 const FLY_SPEED = 4.3, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
 const SAFE_Z = 7, SAFE_XY = 1.5;
-const MAX_VX = 2.8, MAX_VY = 3.8;                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
+const MAX_VX = 2.8, MAX_VY = 3.8;
+const FLY_IN_TIME = 0.12;                                     // captured stars all reach the envelope together in this time                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -566,7 +567,8 @@ export class World {
     for (let tries = 0; tries < 8; tries++) {
       const pts = this.starPattern(zBase);
       if (pts.some(([x, y, z]) => this.crowded(x, y, z, ['cloud']))) continue; // never place stars next to a cloud
-      for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; }
+      const group = (this.groupSeq = (this.groupSeq || 0) + 1);
+      for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; o.group = group; }
       return true;
     }
     return false;
@@ -671,15 +673,30 @@ export class World {
       if (o.kind === 'cloud') o.mesh.material.rotation = Math.sin(this.time + o.x) * 0.04;
       if (!o.alive) continue;
       const z = o.mesh.position.z;
-      // capture: the moment a star/heart is within reach (and less than ~1 s ahead) it is absorbed on the spot,
-      // no travel animation, so nothing ever piles up in front of the letter
-      if ((o.kind === 'star' || o.kind === 'heart') && z > -4.5 && z < 1.2) {
-        const reach = o.kind === 'heart' ? 1.7 : 1.5;
-        if (Math.hypot(o.x - this.courierX, o.y - this.courierY) < reach) {
+      // capture: when a star comes within reach, every star the envelope can reach is caught in the same
+      // moment (incl. the rest of its group up ahead); they all fly in together and are counted at once
+      if (o.kind === 'star' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < 1.5) {
+        const batch = this.objects.filter((s2) => s2.kind === 'star' && s2.alive && !s2.flying
+          && Math.hypot(s2.x - this.courierX, s2.y - this.courierY) < 1.5
+          && s2.mesh.position.z < 1.2 && s2.mesh.position.z > (s2.group === o.group ? -10 : -3.2));
+        const id = (this.batchSeq = (this.batchSeq || 0) + 1);
+        this.batches = this.batches || {}; this.batches[id] = { left: batch.length, count: batch.length };
+        for (const s2 of batch) { s2.flying = true; s2.batch = id; s2.flyT = 0; s2.from = s2.mesh.position.clone(); s2.scale0 = s2.mesh.scale.x; }
+      }
+      if (o.kind === 'heart' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < 1.7) {
+        o.flying = true; o.flyT = 0; o.from = o.mesh.position.clone(); o.scale0 = o.mesh.scale.x;
+      }
+      if (o.flying) {
+        o.flyT += dt;
+        const k = Math.min(1, o.flyT / FLY_IN_TIME), e = k * k * (3 - 2 * k);
+        o.mesh.position.lerpVectors(o.from, cpos, e);
+        o.mesh.scale.setScalar(o.scale0 * (1 - 0.5 * e));
+        if (k >= 1) {
           o.alive = false; this.lane.remove(o.mesh);
-          if (o.kind === 'star') this.collectStar(cpos); else this.collectHeart(cpos);
-          continue;
+          if (o.kind === 'heart') this.collectHeart(cpos);
+          else { const b = this.batches[o.batch]; if (--b.left === 0) { this.collectStars(b.count, cpos); delete this.batches[o.batch]; } }
         }
+        continue;
       }
       const dz = Math.abs(z);
       if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
@@ -704,17 +721,21 @@ export class World {
     }
   }
 
-  collectStar(pos) {
-    this.starsCollected++; this.combo++; this.bestCombo = Math.max(this.bestCombo, this.combo); this.lastStarAt = this.time;
-    this.sfx.play('star', { rate: 1 + Math.min(this.combo, 10) * 0.05, jitter: 0 });
-    this.burst(pos, '#ffe08a', 8, 2.5);
-    if (this.combo % 10 === 0) {
-      this.starsCollected += 5; this.sfx.play('correct');
+  // n stars caught together: one sound, one sparkle, one "+n"
+  collectStars(n, pos) {
+    const before = this.combo;
+    this.starsCollected += n; this.combo += n; this.bestCombo = Math.max(this.bestCombo, this.combo); this.lastStarAt = this.time;
+    this.sfx.play('star', { rate: 1 + Math.min(this.combo, 10) * 0.05, jitter: 0, vol: Math.min(1.4, 1 + (n - 1) * 0.1) });
+    this.burst(pos, '#ffe08a', Math.min(20, 6 + n * 2), 2.5 + Math.min(n, 5) * 0.2);
+    const bonuses = Math.floor(this.combo / 10) - Math.floor(before / 10);   // every 10 in a row still pays +5
+    if (bonuses > 0) {
+      this.starsCollected += 5 * bonuses; this.sfx.play('correct');
       this.burst(pos, '#ffd36b', 22, 4.5);
-      this.emit('float', { text: `${this.combo} combo! +5`, kind: 'combo' });
-    } else this.emit('float', { text: '+1', kind: 'star' });
+      this.emit('float', { text: `${Math.floor(this.combo / 10) * 10} combo! +${n + 5 * bonuses}`, kind: 'combo' });
+    } else this.emit('float', { text: `+${n}`, kind: n > 1 ? 'combo' : 'star' });
     this.emit('stars', this.starsCollected);
   }
+  collectStar(pos) { this.collectStars(1, pos); }
 
   collectHeart(pos) {
     this.starsCollected += 5; this.sfx.play('correct'); this.sfx.play('star', { rate: 1.5, jitter: 0 });
