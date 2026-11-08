@@ -535,32 +535,60 @@ export class World {
     return this.objects.some((o) => o.alive && kinds.includes(o.kind) && Math.abs(o.mesh.position.z - z) < dz && Math.hypot(o.x - x, o.y - y) < dxy);
   }
 
-  starPattern() {
-    const rx = () => (Math.random() * 2 - 1) * (LANE_X - 0.3), ry = () => 0.3 + Math.random() * (LANE_MAX - 0.6);
-    const pattern = Math.random(), pts = [];
-    if (pattern < 0.3) { const x = rx(), y = ry(); for (let i = 0; i < 5; i++) pts.push([x, y, i]); }                         // straight line
-    else if (pattern < 0.55) { const y = ry(); for (let i = 0; i < 6; i++) pts.push([-LANE_X + 0.4 + i * ((LANE_X * 2 - 0.8) / 5), y, i]); } // sweep across
-    else if (pattern < 0.8) { const x = rx(); for (let i = 0; i < 6; i++) pts.push([x, 0.25 + Math.sin(i / 5 * Math.PI) * (LANE_MAX - 0.5), i]); } // arc
-    else { const x = THREE.MathUtils.clamp(rx(), -1.4, 1.4), y = THREE.MathUtils.clamp(ry(), 0.9, LANE_MAX - 0.9); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pts.push([x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, 0]); } } // ring
-    return pts.map(([x, y, k]) => [x, y, SPAWN_Z - k * 1.1]);
+  // Star layouts. Each returns [x, y, depthIndex]; patterns rotate so the same shape never comes twice in a row.
+  starPattern(zBase = SPAWN_Z) {
+    const X = LANE_X - 0.3, rx = () => (Math.random() * 2 - 1) * X, ry = () => 0.3 + Math.random() * (LANE_MAX - 0.6);
+    const cl = (v, a, b) => THREE.MathUtils.clamp(v, a, b);
+    const P = {
+      line: () => { const x = rx(), y = ry(), n = 3 + ((Math.random() * 2) | 0); return Array.from({ length: n }, (_, i) => [x, y, i]); },
+      diagonal: () => { const x0 = rx(), y0 = ry(), x1 = cl(x0 + (Math.random() < 0.5 ? -1 : 1) * (1.4 + Math.random()), -X, X), y1 = cl(y0 + (Math.random() * 2 - 1) * 1.6, 0.2, LANE_MAX - 0.2);
+        return Array.from({ length: 6 }, (_, i) => [x0 + (x1 - x0) * i / 5, y0 + (y1 - y0) * i / 5, i]); },
+      zigzag: () => { const y = cl(ry(), 0.7, LANE_MAX - 0.7), x = cl(rx(), -1.6, 1.6); return Array.from({ length: 6 }, (_, i) => [x + (i % 2 ? 0.7 : -0.7), y + (i % 2 ? 0.45 : -0.45), i]); },
+      wave: () => { const y = ry(); return Array.from({ length: 7 }, (_, i) => [Math.sin(i / 6 * Math.PI * 2) * X * 0.8, cl(y + Math.cos(i / 6 * Math.PI * 2) * 0.5, 0.2, LANE_MAX - 0.2), i]); },
+      sweep: () => { const y = ry(), dir = Math.random() < 0.5 ? 1 : -1; return Array.from({ length: 5 }, (_, i) => [dir * (-X + i * (2 * X / 4)), y, i]); },
+      arc: () => { const x = rx(); return Array.from({ length: 6 }, (_, i) => [x, 0.25 + Math.sin(i / 5 * Math.PI) * (LANE_MAX - 0.5), i]); },
+      ring: () => { const x = cl(rx(), -1.4, 1.4), y = cl(ry(), 0.9, LANE_MAX - 0.9); return Array.from({ length: 8 }, (_, i) => { const a = i / 8 * Math.PI * 2; return [x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, 0]; }); },
+      cluster: () => { const x = cl(rx(), -1.8, 1.8), y = cl(ry(), 0.5, LANE_MAX - 0.5); return Array.from({ length: 4 }, (_, i) => [x + (i % 2 ? 0.45 : -0.45), y + (i < 2 ? 0.35 : -0.35), i < 2 ? 0 : 1]); },
+      scatter: () => Array.from({ length: 4 }, (_, i) => [rx(), ry(), i * 2.2]),
+    };
+    // weights: straight lines are now rare
+    const W = { line: 0.5, diagonal: 1.4, zigzag: 1.2, wave: 1.1, sweep: 0.9, arc: 1, ring: 0.8, cluster: 1, scatter: 0.9 };
+    const keys = Object.keys(W).filter((k) => k !== this.lastPattern);
+    let r = Math.random() * keys.reduce((a, k) => a + W[k], 0), pick = keys[0];
+    for (const k of keys) { r -= W[k]; if (r <= 0) { pick = k; break; } }
+    this.lastPattern = pick;
+    const gap = 1.1 + Math.random() * 0.6; // vary spacing in depth too
+    return P[pick]().map(([x, y, k]) => [x, y, zBase - k * gap]);
   }
 
-  spawnStars() {
+  spawnStars(zBase = SPAWN_Z) {
     for (let tries = 0; tries < 8; tries++) {
-      const pts = this.starPattern();
+      const pts = this.starPattern(zBase);
       if (pts.some(([x, y, z]) => this.crowded(x, y, z, ['cloud']))) continue; // never place stars next to a cloud
       for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; }
-      return;
+      return true;
     }
+    return false;
   }
 
-  spawnCloud() {
+  spawnCloud(z = SPAWN_Z) {
     for (let tries = 0; tries < 10; tries++) {
       const x = (Math.random() * 2 - 1) * LANE_X, y = LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4);
-      if (this.crowded(x, y, SPAWN_Z, ['star', 'heart']) || this.crowded(x, y, SPAWN_Z, ['cloud'], 3, 1.2)) continue;
-      return this.spawn('cloud', x, y);
+      if (this.crowded(x, y, z, ['star', 'heart']) || this.crowded(x, y, z, ['cloud'], 3, 1.2)) continue;
+      const o = this.spawn('cloud', x, y); o.mesh.position.z = z; return o;
     }
     return null;
+  }
+
+  // Fill the lane ahead at the very start, so she doesn't fly through emptiness before the first ring.
+  prefill() {
+    const ring = SEG_DIST;                                   // where the first ring will be (distance ahead)
+    for (let d = GRACE_DIST + 1; d < -SPAWN_Z - 2; d += 5.5 + Math.random() * 3.5) {
+      const nearRing = d > ring - 8 && d < ring + GRACE_DIST;
+      if (nearRing) continue;
+      if (Math.random() < 0.55) this.spawnStars(-d);
+      else this.spawnCloud(-d);
+    }
   }
 
   updateGame(dt) {
@@ -692,7 +720,7 @@ export class World {
     const lost = Math.min(3, this.starsCollected);
     this.starsCollected -= lost; this.hits++; this.combo = 0;
     this.hitTimer = 0.9; this.invuln = 1.4; this.spin = 1;
-    this.sfx.play('bump');
+    this.sfx.play('bump'); this.sfx.play('rustle', { rate: 1.35, vol: 0.9 }); // thud + soft 'poof' (audible on phone speakers)
     for (let i = 0; i < lost; i++) {
       const l = this.lost[i]; l.m.visible = true; l.life = 1; l.m.position.copy(pos);
       l.v.set((i - 1) * 1.6 + (Math.random() - 0.5), 2.5 + Math.random(), 2 + Math.random() * 2);
@@ -734,7 +762,7 @@ export class World {
       camPos = this.camFrom.pos.clone().lerp(gc.pos, e); camLook = this.camFrom.look.clone().lerp(gc.look, e);
       this.setArcProgress(0);
       this.moon.position.lerp(new THREE.Vector3(7, LANE_BASE + 13, -70), 0.03);
-      if (this.transition >= 1) { this.mode = 'game'; this.courier.visible = true; this.dust.visible = true; this.emit('gameStarted'); }
+      if (this.transition >= 1) { this.mode = 'game'; this.courier.visible = true; this.dust.visible = true; this.prefill(); this.emit('gameStarted'); }
     } else if (this.mode === 'game' || this.mode === 'arrived') {
       if (!this.paused && this.mode === 'game') this.updateGame(dt);
       this.globe.quaternion.copy(this.orientGame(this.progress));
