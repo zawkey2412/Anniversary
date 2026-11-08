@@ -5,6 +5,7 @@ import { ICONS } from './icons.js';
 
 const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
+const FLY_SPEED = 6.2, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -459,7 +460,7 @@ export class World {
       } else if (this.dragging && this.last) {
         // touch: relative drag, so the finger never covers the envelope
         this.target.x += ((e.clientX - this.last.x) / w) * LANE_X * 2 * 1.05;
-        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 1.8;
+        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 2.7;
         this.last = { x: e.clientX, y: e.clientY }; clampT();
       }
     });
@@ -476,7 +477,7 @@ export class World {
     this.progress = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
     this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.target.x = 0; this.target.y = 1.2;
-    this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.calm = 2.5; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
+    this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
     this.camFrom.pos.copy(this.camera.position); this.camFrom.look.copy(this.camLook);
     this.quatFrom = this.globe.quaternion.clone();
     this.transition = 0; this.mode = 'toGame'; this.paused = false;
@@ -486,7 +487,6 @@ export class World {
   pause(v) {
     this.paused = v;
     if (v) { this.dragging = false; this.keys?.clear(); }
-    else if (this.mode === 'game') this.calm = 3; // give her ~3 s to find her pace again
   }
 
   toFinale() {
@@ -542,22 +542,20 @@ export class World {
   }
 
   updateGame(dt) {
-    this.calm = Math.max(0, (this.calm || 0) - dt);
-    const ease = this.calm > 0 ? 0.45 + 0.55 * (1 - this.calm / 3) : 1;   // ease back up after a checkpoint
-    const speedFactor = (this.hitTimer > 0 ? 0.6 : 1) * ease;
+    const speedFactor = this.hitTimer > 0 ? 0.6 : 1;
     const flightSeconds = Math.max(105, this.content.checkpoints.length * 8);
     this.progress = Math.min(1, this.progress + (dt * speedFactor) / flightSeconds);
-    const v = 6.2 * speedFactor;
+    const v = FLY_SPEED * speedFactor;
 
     // steering: keys nudge the target, the envelope eases toward it
     const kx = (this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0);
     const ky = (this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0);
     if (kx || ky) {
       this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 2.8 * dt, -LANE_X, LANE_X);
-      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 2.4 * dt, LANE_MIN, LANE_MAX);
+      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 3.8 * dt, LANE_MIN, LANE_MAX);
     }
-    const k = 1 - Math.exp(-dt * 4.5);
-    const nx = this.courierX + (this.target.x - this.courierX) * k, ny = this.courierY + (this.target.y - this.courierY) * k;
+    const kx2 = 1 - Math.exp(-dt * 4.5), ky2 = 1 - Math.exp(-dt * 9); // left/right glides, up/down responds faster
+    const nx = this.courierX + (this.target.x - this.courierX) * kx2, ny = this.courierY + (this.target.y - this.courierY) * ky2;
     this.courierVx = (nx - this.courierX) / Math.max(dt, 1e-3); this.courierVy = (ny - this.courierY) / Math.max(dt, 1e-3);
     this.courierX = nx; this.courierY = ny;
     this.hitTimer = Math.max(0, this.hitTimer - dt); this.invuln = Math.max(0, this.invuln - dt);
@@ -575,15 +573,14 @@ export class World {
     // spawning
     this.spawnClock -= dt * speedFactor; this.starClock -= dt * speedFactor; this.heartClock -= dt * speedFactor;
     const arriving = this.progress > 0.965;
-    const calm = this.calm > 0;
-    if (!calm && !quietZone && !arriving && this.spawnClock <= 0) {
+    if (!quietZone && !arriving && this.spawnClock <= 0) {
       this.spawnClock = 1.2 + Math.random() * 0.9;
       const n = Math.random() < 0.2 ? 2 : 1;
       for (let i = 0; i < n; i++) this.spawn('cloud', (Math.random() * 2 - 1) * LANE_X, LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4));
       if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!calm && !arriving && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
-    if (!calm && !quietZone && !arriving && this.heartClock <= 0) {
+    if (!arriving && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
+    if (!quietZone && !arriving && this.heartClock <= 0) {
       this.heartClock = 13 + Math.random() * 8;
       this.spawn('heart', (Math.random() * 2 - 1) * (LANE_X - 0.4), 0.4 + Math.random() * (LANE_MAX - 0.8));
     }
@@ -615,7 +612,8 @@ export class World {
       }
     }
     this.objects = this.objects.filter((o) => {
-      if (this.clearLane && o.kind !== 'deco') { this.lane.remove(o.mesh); return false; } // fresh start after a checkpoint
+      // after a checkpoint, clear only what would reach her in the next ~2 s, so she can find her pace again
+      if (this.clearLane && o.kind !== 'deco' && o.mesh.position.z > -GRACE_DIST) { this.lane.remove(o.mesh); return false; }
       if (o.mesh.position.z > KILL_Z) { this.lane.remove(o.mesh); return false; }
       return o.alive || o.kind === 'cloud';
     });
