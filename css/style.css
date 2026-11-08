@@ -390,3 +390,6 @@ button { font: inherit; }
 .snip-more { display: inline-flex; align-items: center; gap: 5px; border: 1.5px dashed var(--ink-soft); background: transparent; color: var(--ink); font: 13px var(--type); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
 .snip-more:disabled { opacity: .4; cursor: default; }
 .snip-now { display: inline-flex; align-items: center; gap: 6px; color: var(--blue); }
+
+/* waiting at the start */
+.touch-hint.waiting { font-size: 30px; }

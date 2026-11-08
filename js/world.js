@@ -7,7 +7,7 @@ const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
 const FLY_SPEED = 4.3, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
-const SAFE_Z = 4, SAFE_XY = 1.5;
+const SAFE_Z = 7, SAFE_XY = 1.5;
 const MAX_VX = 2.8, MAX_VY = 3.8;                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
@@ -460,6 +460,7 @@ export class World {
         this.target.x = ((e.clientX / w) * 2 - 1) * LANE_X * 1.25;
         this.target.y = LANE_MIN + (1 - (e.clientY - h * 0.25) / (h * 0.6)) * (LANE_MAX - LANE_MIN);
         clampT(); this.lastMouseAt = this.time; this.emit('firstInput');
+        if (!this.ready && this.mode === 'game' && !this.paused) { this.ready = true; this.launch = 0; this.emit('takeoff'); }
       }
       // touch input comes from the on-screen joystick (main.js sets this.stick)
     });
@@ -476,7 +477,7 @@ export class World {
     this.progress = 0; this.travel = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
     this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.velX = 0; this.velY = 0; this.target.x = 0; this.target.y = 1.2;
-    this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
+    this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.ready = false; this.launch = 0; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
     this.camFrom.pos.copy(this.camera.position); this.camFrom.look.copy(this.camLook);
     this.quatFrom = this.globe.quaternion.clone();
     this.transition = 0; this.mode = 'toGame'; this.paused = false;
@@ -592,7 +593,14 @@ export class World {
   }
 
   updateGame(dt) {
-    const speedFactor = this.hitTimer > 0 ? 0.6 : 1;
+    // waiting at the start: hover in place until she touches the controls, then ease up to speed
+    if (!this.ready) {
+      const moved = this.stick.x || this.stick.y || this.keys.size;
+      if (!moved) return;
+      this.ready = true; this.launch = 0; this.emit('takeoff');
+    }
+    this.launch = Math.min(1, (this.launch ?? 1) + dt / 1.2);
+    const speedFactor = (this.hitTimer > 0 ? 0.6 : 1) * (0.15 + 0.85 * this.launch * this.launch * (3 - 2 * this.launch));
     const v = FLY_SPEED * speedFactor;
     const cps = this.content.checkpoints, n = cps.length, total = n * SEG_DIST + FINAL_DIST;
     this.travel += v * dt;

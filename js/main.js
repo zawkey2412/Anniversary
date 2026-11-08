@@ -159,7 +159,8 @@ function beginGame() {
 world.on('gameStarted', () => {
   $('#hud').classList.remove('hidden');
   const touch = !matchMedia('(pointer: fine)').matches;
-  $('#touch-hint-text').textContent = touch ? 'push the stick to steer' : 'move your mouse (or arrow keys)';
+  $('#touch-hint-text').textContent = touch ? 'push the stick to take off' : 'move your mouse to take off';
+  $('#touch-hint').classList.add('waiting');
   $('#touch-hint').classList.remove('hidden');
   $('#stick').classList.toggle('hidden', !touch);
 });
@@ -200,7 +201,7 @@ world.on('bump', () => {
   const f = $('#hit-flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
   const st = document.querySelector('.hud-stamp'); st.classList.remove('lose'); void st.offsetWidth; st.classList.add('lose');
 });
-world.on('firstInput', () => $('#touch-hint').classList.add('hidden'));
+world.on('takeoff', () => { $('#touch-hint').classList.add('hidden'); $('#touch-hint').classList.remove('waiting'); sfx.play('board', { vol: 0.8 }); });
 world.on('stars', (n) => { $('#hud-stars').textContent = String(n); });
 
 let lastKm = -1;
