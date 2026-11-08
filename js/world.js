@@ -671,17 +671,24 @@ export class World {
       if (o.kind === 'cloud') o.mesh.material.rotation = Math.sin(this.time + o.x) * 0.04;
       if (!o.alive) continue;
       const z = o.mesh.position.z;
-      // magnet: nearby stars and hearts drift into the envelope
-      if ((o.kind === 'star' || o.kind === 'heart') && z > -6 && z < 1.2) {
-        const d = Math.hypot(o.x - this.courierX, o.y - this.courierY);
-        if (d < 1.5) { const m = 1 - Math.exp(-dt * 16); o.x += (this.courierX - o.x) * m; o.y += (this.courierY - o.y) * m; o.mesh.position.x = o.x; if (o.kind === 'star') o.mesh.position.y = LANE_BASE + o.y; }
+      // capture: once a star/heart is within reach and less than ~1 s ahead, it shoots straight into the
+      // envelope (x, y AND depth) in under 0.2 s, so nothing ever hangs in front of the letter
+      if ((o.kind === 'star' || o.kind === 'heart') && !o.flying && z > -4.5 && z < 1.2) {
+        const reach = o.kind === 'heart' ? 1.7 : 1.5;
+        if (Math.hypot(o.x - this.courierX, o.y - this.courierY) < reach) { o.flying = true; o.flyT = 0; }
       }
-      const dz = Math.abs(z), d2 = Math.hypot(o.x - this.courierX, o.y - this.courierY);
-      if (o.kind === 'star' && dz < 1.0 && d2 < 0.9) {
-        o.alive = false; this.lane.remove(o.mesh); this.collectStar(cpos);
-      } else if (o.kind === 'heart' && dz < 1.0 && d2 < 1.1) {
-        o.alive = false; this.lane.remove(o.mesh); this.collectHeart(cpos);
-      } else if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
+      if (o.flying) {
+        o.flyT += dt;
+        o.mesh.position.lerp(cpos, 1 - Math.exp(-dt * 28));
+        o.mesh.scale.multiplyScalar(1 - Math.min(0.5, dt * 4));      // shrink as it goes in
+        if (o.mesh.position.distanceTo(cpos) < 0.35 || o.flyT > 0.18) {
+          o.alive = false; this.lane.remove(o.mesh);
+          if (o.kind === 'star') this.collectStar(cpos); else this.collectHeart(cpos);
+        }
+        continue;
+      }
+      const dz = Math.abs(z);
+      if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
         o.alive = false; this.hitCloud(cpos);
       } else if (o.kind === 'ring' && z > -0.1) {
         o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.emit('checkpoint', o.index);
