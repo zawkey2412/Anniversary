@@ -12,7 +12,7 @@
     ],
     "gateQuestion": "the night it started",
     "gateHint": "dd.mm",
-    "music": "",
+    "music": "media/audio/music-mw7pn9zf.mp3",
     "cityA": {
       "name": "Istanbul",
       "lat": 41.0082,
@@ -118,7 +118,7 @@
       "type": "song",
       "question": "Which song did you translate for me?",
       "hint": "Christmas night, 04:44.",
-      "audio": "",
+      "audio": "media/audio/which-song-did-you-translate-f-mw7pnwgl.mp3",
       "options": [
         "Gül Pembe",
         "Firuze",
@@ -160,7 +160,7 @@
       "type": "song",
       "question": "\"Im a smart woman.\" What did I reply?",
       "hint": "5 May 2026, 23:22.",
-      "audio": "",
+      "audio": "media/audio/im-a-smart-woman-what-did-i-re-mw7ppjhd.mp3",
       "options": [
         "From The Start by Laufey",
         "Mad Woman by Laufey",
@@ -226,7 +226,7 @@
       "But even on the toughest days, the one thing that never changed was my desire to make this work with you. The fact that we’ve had our rough patches and still managed to hold onto each other just proves how real this is. We keep choosing each other, even when it’s not easy, and I am so proud of us for that. Thank you for sticking by my side, for the late-night calls, for your patience, and for loving me through the messy parts of the year. I miss you more than words can say, and I cannot wait for the day when we finally don't have to rely on a phone to see each other. Until then, I’m sending you all my love, bebiskitom."
     ],
     "signature": "— Uqi",
-    "video": "",
+    "video": "https://youtu.be/DFMH9jbsUzA",
     "videoNote": "a little video for you",
     "closing": "İyi ki varsın"
   }
