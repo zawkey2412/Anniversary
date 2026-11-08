@@ -441,7 +441,7 @@ export class World {
 
   // ---------- input ----------
   bindInput() {
-    this.target = { x: 0, y: 1.2 }; this.keys = new Set(); this.dragging = false; this.last = null;
+    this.target = { x: 0, y: 1.2 }; this.keys = new Set(); this.dragging = false; this.last = null; this.stick = { x: 0, y: 0 };
     const blocked = (e) => this.mode !== 'game' || this.paused || (e.target.closest && e.target.closest('button, input, .modal, a'));
     const clampT = () => {
       this.target.x = THREE.MathUtils.clamp(this.target.x, -LANE_X, LANE_X);
@@ -459,12 +459,8 @@ export class World {
         this.target.x = ((e.clientX / w) * 2 - 1) * LANE_X * 1.25;
         this.target.y = LANE_MIN + (1 - (e.clientY - h * 0.25) / (h * 0.6)) * (LANE_MAX - LANE_MIN);
         clampT(); this.emit('firstInput');
-      } else if (this.dragging && this.last) {
-        // touch: relative drag, so the finger never covers the envelope
-        this.target.x += ((e.clientX - this.last.x) / w) * LANE_X * 2 * 1.05;
-        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 2.7;
-        this.last = { x: e.clientX, y: e.clientY }; clampT();
       }
+      // touch input comes from the on-screen joystick (main.js sets this.stick)
     });
     const up = () => { this.dragging = false; this.last = null; };
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up); window.addEventListener('blur', () => { up(); this.keys.clear(); });
@@ -488,7 +484,7 @@ export class World {
 
   pause(v) {
     this.paused = v;
-    if (v) { this.dragging = false; this.keys?.clear(); }
+    if (v) { this.dragging = false; this.keys?.clear(); if (this.stick) { this.stick.x = 0; this.stick.y = 0; } this.emit('stickReset'); }
   }
 
   toFinale() {
@@ -574,8 +570,9 @@ export class World {
     this.progress = Math.min(1, this.travel / total);
 
     // steering: keys nudge the target, the envelope eases toward it
-    const kx = (this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0);
-    const ky = (this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0);
+    // keys and the joystick both act like a stick: -1..1 on each axis
+    const kx = THREE.MathUtils.clamp((this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0) + this.stick.x, -1, 1);
+    const ky = THREE.MathUtils.clamp((this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0) + this.stick.y, -1, 1);
     if (kx || ky) {
       this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 2.8 * dt, -LANE_X, LANE_X);
       this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 3.8 * dt, LANE_MIN, LANE_MAX);

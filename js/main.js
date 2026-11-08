@@ -149,9 +149,33 @@ function beginGame() {
 }
 world.on('gameStarted', () => {
   $('#hud').classList.remove('hidden');
-  $('#touch-hint-text').textContent = matchMedia('(pointer: fine)').matches ? 'move your mouse (or arrow keys)' : 'drag anywhere to steer';
+  const touch = !matchMedia('(pointer: fine)').matches;
+  $('#touch-hint-text').textContent = touch ? 'push the stick to steer' : 'move your mouse (or arrow keys)';
   $('#touch-hint').classList.remove('hidden');
+  $('#stick').classList.toggle('hidden', !touch);
 });
+
+// ---------- joystick (touch screens): fixed at the bottom centre, works from anywhere ----------
+const stickEl = $('#stick'), knob = stickEl.querySelector('.stick-knob');
+let stickId = null;
+function setStick(px, py) {
+  const r = stickEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2, max = r.width / 2;
+  let dx = px - cx, dy = py - cy; const len = Math.hypot(dx, dy);
+  if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  const dead = 0.12, nx = dx / max, ny = -dy / max, m = Math.hypot(nx, ny);
+  const k = m < dead ? 0 : (m - dead) / (1 - dead) / m;           // dead zone, then smooth 0..1
+  world.stick.x = nx * k; world.stick.y = ny * k;
+}
+function releaseStick() { stickId = null; knob.style.transform = ''; world.stick.x = 0; world.stick.y = 0; stickEl.classList.remove('active'); }
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' || stickEl.classList.contains('hidden') || world.mode !== 'game' || world.paused) return;
+  if (e.target.closest?.('button, input, .modal, a')) return;
+  stickId = e.pointerId; stickEl.classList.add('active'); setStick(e.clientX, e.clientY); $('#touch-hint').classList.add('hidden');
+});
+window.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) setStick(e.clientX, e.clientY); });
+['pointerup', 'pointercancel'].forEach((t) => window.addEventListener(t, (e) => { if (e.pointerId === stickId) releaseStick(); }));
+world.on('stickReset', releaseStick);
 
 // floating "+1", combo and "-3" texts above the envelope
 world.on('float', ({ text, kind }) => {
@@ -186,6 +210,7 @@ world.on('checkpoint', (i) => {
   openCheckpoint(content.checkpoints[i], i, () => { sfx.play('place'); closeModal(); world.pause(false); });
 });
 world.on('arrived', () => {
+  $('#stick').classList.add('hidden'); releaseStick();
   $('#hud').classList.add('hidden'); $('#touch-hint').classList.add('hidden');
   setTimeout(() => world.toFinale(), 400);
   setTimeout(showFinale, 2800);
