@@ -9,6 +9,7 @@ const FLY_SPEED = 4.3, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
 const SAFE_Z = 7, SAFE_XY = 1.5;
 const MAX_VX = 2.8, MAX_VY = 3.8;
+const STAR_REACH = 1.0, HEART_REACH = 1.2;                     // how close (sideways/up-down) she must be to catch
 const FLY_IN_TIME = 0.12;                                     // captured stars all reach the envelope together in this time                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
@@ -675,15 +676,15 @@ export class World {
       const z = o.mesh.position.z;
       // capture: when a star comes within reach, every star the envelope can reach is caught in the same
       // moment (incl. the rest of its group up ahead); they all fly in together and are counted at once
-      if (o.kind === 'star' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < 1.5) {
+      if (o.kind === 'star' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < STAR_REACH) {
         const batch = this.objects.filter((s2) => s2.kind === 'star' && s2.alive && !s2.flying
-          && Math.hypot(s2.x - this.courierX, s2.y - this.courierY) < 1.5
+          && Math.hypot(s2.x - this.courierX, s2.y - this.courierY) < STAR_REACH
           && s2.mesh.position.z < 1.2 && s2.mesh.position.z > (s2.group === o.group ? -10 : -3.2));
         const id = (this.batchSeq = (this.batchSeq || 0) + 1);
         this.batches = this.batches || {}; this.batches[id] = { left: batch.length, count: batch.length };
         for (const s2 of batch) { s2.flying = true; s2.batch = id; s2.flyT = 0; s2.from = s2.mesh.position.clone(); s2.scale0 = s2.mesh.scale.x; }
       }
-      if (o.kind === 'heart' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < 1.7) {
+      if (o.kind === 'heart' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < HEART_REACH) {
         o.flying = true; o.flyT = 0; o.from = o.mesh.position.clone(); o.scale0 = o.mesh.scale.x;
       }
       if (o.flying) {
