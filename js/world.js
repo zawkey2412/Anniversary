@@ -441,7 +441,7 @@ export class World {
 
   updateGame(dt) {
     const speedFactor = this.hitTimer > 0 ? 0.45 : 1;
-    const flightSeconds = 105;
+    const flightSeconds = Math.max(105, this.content.checkpoints.length * 8);
     this.progress = Math.min(1, this.progress + (dt * speedFactor) / flightSeconds);
     const v = 9 * speedFactor;
 
@@ -458,7 +458,7 @@ export class World {
     const quietZone = this.nextCheckpoint < cps.length && this.progress > this.cpAt(this.nextCheckpoint) - 0.025;
     if (this.nextCheckpoint < cps.length && this.progress >= this.cpAt(this.nextCheckpoint) && !this.objects.some((o) => o.kind === 'ring')) {
       const cp = cps[this.nextCheckpoint];
-      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: cp.type === 'memory' ? 'mail' : cp.type === 'song' ? 'music' : 'hash' });
+      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
       this.nextCheckpoint++;
     }
 

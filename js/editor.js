@@ -138,12 +138,12 @@ function render() {
   const cps = panel('✨ Checkpoints', 'She flies through a glowing ring for each one, in this order. Mix memories with guessing games.');
   data.checkpoints.forEach((cp, i) => cps.appendChild(renderCheckpoint(cp, i)));
   const add = document.createElement('div'); add.className = 'add-row';
-  add.innerHTML = '<button class="btn small" data-add="memory">+ Memory 📷</button><button class="btn small" data-add="number">+ Guess the number 🔢</button><button class="btn small" data-add="song">+ Guess the song 🎧</button>';
+  add.innerHTML = '<button class="btn small" data-add="memory">+ Memory 📷</button><button class="btn small" data-add="number">+ Guess the number 🔢</button><button class="btn small" data-add="song">+ Guess the song 🎧</button><button class="btn small" data-add="choice">+ Multiple choice ❓</button>';
   add.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => {
     const t = b.dataset.add;
     data.checkpoints.push(t === 'memory' ? { type: 'memory', date: '', title: 'New memory', quote: '', quoteBy: 'you', text: '', image: '', caption: '♥' }
       : t === 'number' ? { type: 'number', question: 'New question?', hint: '', answer: 0, unit: '', reveal: '' }
-      : { type: 'song', question: 'Guess the song 🎧', hint: '', audio: '', options: ['', '', '', ''], answer: 0, reveal: '' });
+      : { type: t, question: t === 'song' ? 'Guess the song' : 'New question?', hint: '', ...(t === 'song' ? { audio: '' } : {}), options: ['', '', '', ''], answer: 0, reveal: '' });
     save(); render();
   }));
   cps.appendChild(add);
@@ -160,7 +160,7 @@ function render() {
 
 function renderCheckpoint(cp, i) {
   const box = document.createElement('div'); box.className = 'cp';
-  const label = cp.type === 'memory' ? '📷 Memory' : cp.type === 'number' ? '🔢 Guess the number' : '🎧 Guess the song';
+  const label = { memory: '📷 Memory', number: '🔢 Guess the number', song: '🎧 Guess the song', choice: '❓ Multiple choice' }[cp.type] || cp.type;
   box.innerHTML = `<div class="cp-head"><h3><span class="tag">#${i + 1}</span>${label}</h3>
     <div class="tools"><button class="btn small ghost" data-up title="move up">↑</button><button class="btn small ghost" data-down title="move down">↓</button><button class="btn small danger" data-del>Delete</button></div></div>`;
   const move = (d) => { const j = i + d; if (j < 0 || j >= data.checkpoints.length) return; [data.checkpoints[i], data.checkpoints[j]] = [data.checkpoints[j], data.checkpoints[i]]; save(); render(); };
@@ -180,8 +180,8 @@ function renderCheckpoint(cp, i) {
     g.append(field('Correct answer', cp, 'answer', { type: 'number' }), field('Unit (shown under the number)', cp, 'unit'));
     box.append(field('Question', cp, 'question'), field('Hint', cp, 'hint'), g, field('Shown after she guesses', cp, 'reveal', { textarea: true, rows: 2 }));
   } else {
-    box.append(field('Title', cp, 'question'), field('Hint', cp, 'hint'),
-      mediaField('Song clip (10–20 s is perfect: cut the intro or chorus)', cp, 'audio', 'audio', () => cp.question));
+    box.append(field(cp.type === 'song' ? 'Title' : 'Question', cp, 'question'), field('Hint', cp, 'hint'));
+    if (cp.type === 'song') box.append(mediaField('Song clip (optional, 10–20 s: the intro or chorus)', cp, 'audio', 'audio', () => cp.question));
     const opts = document.createElement('div'); opts.innerHTML = '<label>Answer options (pick the correct one with the circle)</label>';
     cp.options ||= ['', '', '', ''];
     cp.options.forEach((o, k) => {

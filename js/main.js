@@ -191,7 +191,7 @@ function bindContinue(done) { const b = card.querySelector('[data-continue]'); b
 function openCheckpoint(cp, i, done) {
   if (cp.type === 'memory') return openMemory(cp, i, done);
   if (cp.type === 'number') return openNumber(cp, i, done);
-  if (cp.type === 'song') return openSong(cp, i, done);
+  if (cp.type === 'song' || cp.type === 'choice') return openSong(cp, i, done);
   done();
 }
 
@@ -249,8 +249,10 @@ function openNumber(cp, i, done) {
         <p class="tq-text">${esc(cp.reveal || '')}</p>
       </div>
       ${continueBtn}`;
-    countUp(card.querySelector('[data-count]'), a, () => {
-      card.querySelector('[data-stamp]').innerHTML = rubberStamp(label, color);
+    const countEl = card.querySelector('[data-count]'), stampEl = card.querySelector('[data-stamp]');
+    countUp(countEl, a, () => {
+      if (!stampEl.isConnected) return; // card already closed
+      stampEl.innerHTML = rubberStamp(label, color);
       sfx.play('stamp'); setTimeout(() => sfx.play(good ? 'correct' : 'wrong'), 180);
     });
     bindContinue(done);
@@ -264,6 +266,7 @@ function countUp(el, target, then) {
     const p = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - p, 3);
     el.textContent = fmt(Math.round(target * e));
     if (now - lastTick > 70 && p < 1) { lastTick = now; sfx.play('type', { vol: 0.7, jitter: 0.3 }); }
+    if (!el.isConnected) return;
     if (p < 1) requestAnimationFrame(step); else then?.();
   })(start);
 }
@@ -273,18 +276,18 @@ function stopClip() { if (clip) { clip.pause(); clip = null; } if (S.music && so
 
 function openSong(cp, i, done) {
   const opts = (cp.options || []).map((o, k) => `<button class="option" data-i="${k}">${esc(o || '…')}</button>`).join('');
+  const isSong = cp.type === 'song';
   openModal(`
     <div class="tape-card">
-      <div class="pc-no">No. ${pad2(i + 1)} — guess the song</div>
+      <div class="pc-no">No. ${pad2(i + 1)} — ${isSong ? 'guess the song' : 'quick question'}</div>
       <h2 class="pc-title" style="margin-right:0">${esc(cp.question)}</h2>
       ${cp.hint ? `<p class="tq-hint">${esc(cp.hint)}</p>` : ''}
-      <div class="cassette" data-cassette>
+      ${isSong ? `<div class="cassette" data-cassette>
         <div class="label"><span>mixtape for ${esc(S.herName)}</span></div>
         <div class="window"><div class="reel"></div><div class="reel"></div></div>
         <div class="bottom"></div>
         ${cp.audio ? `<button class="play-btn" data-play aria-label="play">${icon('play')}</button>` : ''}
-      </div>
-      ${cp.audio ? '' : `<p class="no-audio">${icon('music')} song clip goes here</p>`}
+      </div>` : ''}
       <div class="options">${opts}</div>
       <div data-result></div>
     </div>`);

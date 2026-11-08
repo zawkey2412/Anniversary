@@ -45,78 +45,145 @@
   "checkpoints": [
     {
       "type": "memory",
-      "date": "9 November 2025",
-      "title": "The first message",
-      "quote": "Im looking for the guy i love is he here????",
-      "quoteBy": "you",
-      "text": "And he was. Still is.",
+      "date": "9 October 2025",
+      "title": "The first letter",
       "image": "",
-      "caption": "where it started"
+      "caption": "same story",
+      "quote": "The last time i use it was like 3 years ago. And i install it back the day i sent you a letter",
+      "quoteBy": "you",
+      "text": "I'd reinstalled Slowly the day before. Maybe it's fate."
     },
     {
-      "type": "number",
-      "question": "How many messages did we send this year?",
-      "hint": "Even the 'byeeee's count.",
-      "answer": 53096,
-      "unit": "messages",
-      "reveal": "Plus 4,783 photos, stickers and voice notes."
+      "type": "memory",
+      "date": "9 November 2025",
+      "title": "Is he here?",
+      "image": "",
+      "caption": "where it started",
+      "quote": "Im looking for the guy i love is he here????",
+      "quoteBy": "you",
+      "text": "He was. Still is."
+    },
+    {
+      "type": "choice",
+      "question": "Our very first day. What did you promise me?",
+      "hint": "9 November 2025, 19:01.",
+      "options": [
+        "To always answer my first call",
+        "To still love me after I go bald",
+        "To learn Indonesian",
+        "To let me win at Uno"
+      ],
+      "answer": 1,
+      "reveal": "\"I promise i will still love you after you go bald.\" Holding you to it."
+    },
+    {
+      "type": "memory",
+      "date": "10 November 2025",
+      "title": "The first call",
+      "image": "",
+      "caption": "you, nervous",
+      "quote": "After the first call i will always bother you with my calls you cant get rid of me",
+      "quoteBy": "you",
+      "text": "Your voice was softer than I expected. And you kept that promise."
     },
     {
       "type": "memory",
       "date": "13 November 2025",
       "title": "Ay Yüzlüm",
-      "quote": "smth like 'pretty like the moon' and the translation is 'my moon-faced one'",
-      "quoteBy": "you",
-      "text": "Your name in my phone. The one thing we both look at, at the same time.",
       "image": "",
-      "caption": "my moon-faced one"
-    },
-    {
-      "type": "song",
-      "question": "Guess the song",
-      "hint": "One we sent each other.",
-      "audio": "",
-      "options": [
-        "Song title A",
-        "Song title B",
-        "Song title C",
-        "Song title D"
-      ],
-      "answer": 0,
-      "reveal": "Placeholder: one line about why this song is ours."
-    },
-    {
-      "type": "memory",
-      "date": "8 December 2025",
-      "title": "Our first month",
-      "quote": "Oh now its our first month together btww",
+      "caption": "my moon-faced one",
+      "quote": "'pretty like the moon' and the translation is 'my moon-faced one'",
       "quoteBy": "you",
-      "text": "I said three. You said six. We both lost count early.",
-      "image": "",
-      "caption": "month one"
+      "text": "And in Indonesia, Ay sounds like sAYang. Your name works in both our languages."
     },
     {
       "type": "number",
-      "question": "How many times did I call you \"salak\"?",
-      "hint": "Be honest.",
-      "answer": 310,
-      "unit": "times",
-      "reveal": "You called me salak 217 times. We're even-ish."
+      "question": "How many messages did we send this year?",
+      "hint": "Every 'byeeee' counts.",
+      "answer": 163365,
+      "unit": "messages",
+      "reveal": "And we talked on all 365 days. Not one missed."
     },
     {
       "type": "memory",
       "date": "24 December 2025",
       "title": "My birthday",
+      "image": "",
+      "caption": "24.12",
       "quote": "connection is not about proximity, but about hearts choosing each other again and again.",
       "quoteBy": "you",
-      "text": "A whole letter, from Türkiye. I still read it.",
+      "text": "A whole letter, from Türkiye. I still read it."
+    },
+    {
+      "type": "song",
+      "question": "Which song did you translate for me?",
+      "hint": "Christmas night, 04:44.",
+      "audio": "",
+      "options": [
+        "Gül Pembe",
+        "Firuze",
+        "Kediler ve Şarkılar",
+        "Leylim Ley"
+      ],
+      "answer": 2,
+      "reveal": "\"I choose the song because i wanted to.\" I still have it."
+    },
+    {
+      "type": "memory",
+      "date": "1 January 2026",
+      "title": "New year",
       "image": "",
-      "caption": "24.12"
+      "caption": "2026",
+      "quote": "Hopefully this new year will bring a lot of happiness to you and us",
+      "quoteBy": "me",
+      "text": "It did."
     },
     {
       "type": "number",
-      "question": "Your longest \"I love you sooo…\" — how many o's?",
-      "hint": "22 Sept, 07:57.",
+      "question": "How many times did I call you \"salak\"?",
+      "hint": "Be honest.",
+      "answer": 1683,
+      "unit": "times",
+      "reveal": "You called me salak 1,312 times. Still losing, salak."
+    },
+    {
+      "type": "memory",
+      "date": "8 April 2026",
+      "title": "Five months",
+      "image": "",
+      "caption": "exactly 5",
+      "quote": "Okay just hate me i know you never want it to be 5 months",
+      "quoteBy": "you",
+      "text": "I said \"Exactly 5 months.\" We never agree on how long it's been."
+    },
+    {
+      "type": "song",
+      "question": "\"Im a smart woman.\" What did I reply?",
+      "hint": "5 May 2026, 23:22.",
+      "audio": "",
+      "options": [
+        "From The Start by Laufey",
+        "Mad Woman by Laufey",
+        "Bewitched by Laufey",
+        "Lovesick by Laufey"
+      ],
+      "answer": 1,
+      "reveal": "Then \"Clean Air by Laufey\". You said I still didn't say I love you. I love you."
+    },
+    {
+      "type": "memory",
+      "date": "6 August 2026",
+      "title": "In my dreams",
+      "image": "",
+      "caption": "did you feel it?",
+      "quote": "Im gonna kiss you in my dreams so im letting you know if you feel it",
+      "quoteBy": "you",
+      "text": "I did."
+    },
+    {
+      "type": "number",
+      "question": "Your longest \"I love you sooo…\". How many o's?",
+      "hint": "22 September, 07:57.",
       "answer": 7201,
       "unit": "o's",
       "reveal": "I tried to answer. You still won."
@@ -125,43 +192,38 @@
       "type": "memory",
       "date": "October 2026",
       "title": "Uno nights",
+      "image": "",
+      "caption": "loser (you)",
       "quote": "But you are the loser always💜",
       "quoteBy": "you",
-      "text": "Losing to you never felt like losing.",
-      "image": "",
-      "caption": "loser (you)"
+      "text": "Losing to you never felt like losing."
     },
     {
-      "type": "song",
-      "question": "One more song",
-      "hint": "From me, to you.",
-      "audio": "",
-      "options": [
-        "Song title A",
-        "Song title B",
-        "Song title C",
-        "Song title D"
-      ],
-      "answer": 1,
-      "reveal": "Placeholder: one line about why this song is ours."
+      "type": "number",
+      "question": "How many times did you say \"I love you\" this year?",
+      "hint": "Just you. Not me.",
+      "answer": 1865,
+      "unit": "times",
+      "reveal": "Me: 835. I owe you 1,030. Starting now."
     },
     {
       "type": "memory",
-      "date": "Every single night",
+      "date": "Every night",
       "title": "Good night, aşkım",
+      "image": "",
+      "caption": "every night",
       "quote": "Sweet dreamsssss. Dream aboutmeeee",
       "quoteBy": "you",
-      "text": "You fall asleep first. I stay up to say it back.",
-      "image": "",
-      "caption": "every night"
+      "text": "You fall asleep first. I stay up to say it back."
     }
   ],
   "finale": {
     "delivered": "Delivered",
-    "line": "9,571 km apart. Every message still found you.",
+    "line": "9,571 km apart. 365 days. Not one missed.",
     "letterTitle": "Happy first anniversary, Ay Yüzlüm",
     "letter": [
-      "One year ago you came looking for me. I've been here ever since.",
+      "One year ago, your letter crossed 9,571 km on Slowly. You'd reinstalled it after three years. I'd reinstalled it the day before.",
+      "Since then: 163,365 messages, and not one day without you.",
       "We've never been in the same room, yet you're the first person I tell everything to. The good things, the stupid things, the 3 AM things.",
       "Thank you for every good morning, every salak, every dkdldk.",
       "I love you, aşkım. Every night, under the same moon."
