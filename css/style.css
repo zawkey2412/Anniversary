@@ -165,15 +165,15 @@ button { font: inherit; }
 .bp-stub .btn-red .ic { transform: rotate(45deg); font-size: 18px; }
 
 /* ---------- HUD ---------- */
-#hud { position: fixed; top: 0; left: 0; right: 0; z-index: 4; display: flex; justify-content: space-between; align-items: flex-start; padding: max(12px, env(safe-area-inset-top)) 12px 0; pointer-events: none; }
-.hud-ticket { background-color: var(--paper); border-radius: 6px; padding: 8px 12px 7px; width: min(300px, 64vw); box-shadow: 0 6px 18px rgba(0,0,0,.35); border-left: 5px solid var(--red); border-right: 5px solid var(--blue); }
+#hud { position: fixed; top: 0; left: 0; right: 0; z-index: 4; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 12px 0; pointer-events: none; }
+.hud-ticket { background-color: var(--paper); border-radius: 6px; padding: 8px 12px 7px; flex: 1 1 auto; min-width: 0; max-width: 300px; box-shadow: 0 6px 18px rgba(0,0,0,.35); border-left: 5px solid var(--red); border-right: 5px solid var(--blue); }
 .route { display: flex; align-items: center; gap: 8px; font: 15px var(--type); color: var(--ink); }
 .route b { font-weight: normal; }
 .route-line { flex: 1; height: 2px; position: relative; background: repeating-linear-gradient(90deg, #b9ad97 0 6px, transparent 6px 10px); }
 #progress-bar { position: absolute; left: 0; top: 0; height: 2px; width: 0; background: var(--red); }
 #progress-plane { position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%) rotate(45deg); font-size: 15px; color: var(--red); display: flex; }
 .hud-km { font: 11px var(--type); color: var(--ink-soft); margin-top: 3px; letter-spacing: .5px; }
-.hud-right { display: flex; gap: 8px; align-items: center; pointer-events: auto; }
+.hud-right { flex: none; display: flex; gap: 10px; align-items: center; pointer-events: auto; }
 .hud-stamp { transform: rotate(5deg); }
 .hud-stars { display: inline-flex; align-items: center; gap: 5px; font: 16px var(--type); color: var(--red); padding: 4px 8px; }
 .hud-stars b { font-weight: normal; color: var(--ink); }

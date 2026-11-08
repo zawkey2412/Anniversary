@@ -299,7 +299,7 @@ export class World {
     [[this.cityA, s.cityA, '#ff5a4f'], [this.cityB, s.cityB, '#6b9bff']].forEach(([v, info, color]) => {
       const g = new THREE.Group();
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, 2.6, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-      beam.position.y = 1.3; g.add(beam);
+      beam.position.y = 1.3; g.add(beam); g.userData.beam = beam;
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.pinkGlow, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       glow.scale.set(1.4, 1.4, 1); glow.position.y = 0.05; g.add(glow);
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.32, 48), new THREE.MeshBasicMaterial({ color, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
@@ -316,7 +316,7 @@ export class World {
 
     // the arc of light between the two cities (drawn progressively)
     const pts = [];
-    for (let i = 0; i <= 200; i++) { const t = i / 200; pts.push(this.pathPoint(t).multiplyScalar(R + 0.12 + Math.sin(Math.PI * t) * 1.6)); }
+    for (let i = 0; i <= 200; i++) { const t = i / 200; pts.push(this.pathPoint(t).multiplyScalar(R + 0.1 + Math.sin(Math.PI * t) * 0.5)); }
     this.arcSegments = 240; this.arcRadial = 8;
     const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), this.arcSegments, 0.045, this.arcRadial, false);
     this.arc = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: '#ffe2b0', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -350,9 +350,9 @@ export class World {
     const face = new THREE.MeshStandardMaterial({ map: envTex, emissiveMap: envTex, emissive: '#ffffff', emissiveIntensity: 0.55, roughness: 0.8 });
     const edge = new THREE.MeshStandardMaterial({ color: '#efe4cc', roughness: 0.9 });
     const env = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.62, 0.04), [edge, edge, edge, edge, face, face]);
-    env.scale.setScalar(1.25); g.add(env); this.envelope = env;
+    env.scale.setScalar(1.25); env.renderOrder = 10; g.add(env); this.envelope = env;
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
-    glow.scale.set(2.0, 2.0, 1); glow.position.z = -0.1; g.add(glow); this.courierGlow = glow;
+    glow.scale.set(1.8, 1.8, 1); glow.position.z = -0.25; g.add(glow); this.courierGlow = glow;
     const light = new THREE.PointLight('#ffd9a0', 6, 6, 1.6); g.add(light);
     g.visible = false;
     this.courier = g; this.scene.add(g);
@@ -601,14 +601,14 @@ export class World {
     const arriveAt = this.travel + spawnLead;
     const nearRing = (before, after) => { for (let i = 0; i < n; i++) { const d = (i + 1) * SEG_DIST - arriveAt; if (d < before && d > -after) return true; } return false; };
     const arriving = arriveAt > total - 3;
-    const quietZone = nearRing(8, 4);                 // no clouds/hearts just before or right after a ring
+    const quietZone = nearRing(8, GRACE_DIST);        // no clouds/hearts just before a ring or in the 2 s after it
     if (!quietZone && !arriving && this.spawnClock <= 0) {
       this.spawnClock = 1.2 + Math.random() * 0.9;
       const count = Math.random() < 0.2 ? 2 : 1;
       for (let i = 0; i < count; i++) this.spawnCloud();
       if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!arriving && !nearRing(4, 3) && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
+    if (!arriving && !nearRing(3, GRACE_DIST) && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
     if (!quietZone && !arriving && this.heartClock <= 0) {
       this.heartClock = 13 + Math.random() * 8;
       const hx = (Math.random() * 2 - 1) * (LANE_X - 0.4), hy = 0.4 + Math.random() * (LANE_MAX - 0.8);
@@ -638,17 +638,14 @@ export class World {
       } else if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
         o.alive = false; this.hitCloud(cpos);
       } else if (o.kind === 'ring' && z > -0.1) {
-        o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.clearLane = true; this.emit('checkpoint', o.index);
+        o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.emit('checkpoint', o.index);
       }
     }
     this.objects = this.objects.filter((o) => {
-      // after a checkpoint, clear only what would reach her in the next ~2 s, so she can find her pace again
-      if (this.clearLane && o.kind !== 'deco' && o.mesh.position.z > -GRACE_DIST) { this.lane.remove(o.mesh); return false; }
       if (o.mesh.position.z > KILL_Z) { this.lane.remove(o.mesh); return false; }
       return o.alive || o.kind === 'cloud';
     });
 
-    this.clearLane = false;
 
     // dust
     const dp = this.dust.geometry.attributes.position;
@@ -743,17 +740,18 @@ export class World {
       const vx = THREE.MathUtils.clamp(this.courierVx || 0, -6, 6), vy = THREE.MathUtils.clamp(this.courierVy || 0, -6, 6);
       this.courier.rotation.set(-vy * 0.06, -vx * 0.05 + Math.sin(t * 1.5) * 0.12, -vx * 0.09 + (1 - this.spin) * 0 + this.spin * Math.PI * 2);
       this.envelope.visible = !(this.invuln > 0 && Math.sin(t * 30) > 0.4);
-      this.courierGlow.material.opacity = 0.45 + Math.sin(t * 4) * 0.12;
+      this.courierGlow.material.opacity = 0.22 + Math.sin(t * 4) * 0.06;
       // trail
       this.trailTimer -= dt;
       if (!this.paused && this.trailTimer <= 0) {
-        this.trailTimer = 0.03; const p = this.trail[this.trailIdx++ % this.trail.length];
-        p.s.visible = true; p.life = 1; p.s.position.set(this.courierX + (Math.random() - 0.5) * 0.15, cy + (Math.random() - 0.5) * 0.15, 0.2);
+        this.trailTimer = 0.035; const p = this.trail[this.trailIdx++ % this.trail.length];
+        const side = this.trailIdx % 2 ? 1 : -1; // alternate left / right corner of the envelope
+        p.s.visible = true; p.life = 1; p.s.position.set(this.courierX + side * 0.6 + (Math.random() - 0.5) * 0.05, cy - 0.3 + (Math.random() - 0.5) * 0.05, 0.1);
       }
       for (const p of this.trail) {
         if (!p.s.visible) continue;
         if (!this.paused) { p.life -= dt * 1.6; p.s.position.z += dt * 6; }
-        p.s.material.opacity = Math.max(0, p.life) * 0.6; const sc = 0.15 + p.life * 0.35; p.s.scale.set(sc, sc, 1);
+        p.s.material.opacity = Math.max(0, p.life) * 0.28; const sc = 0.06 + p.life * 0.16; p.s.scale.set(sc, sc, 1);
         if (p.life <= 0) p.s.visible = false;
       }
     } else if (this.mode === 'toFinale' || this.mode === 'finale') {
@@ -787,6 +785,7 @@ export class World {
 
     const showLabels = this.mode === 'idle' || this.mode === 'finale' || this.mode === 'toFinale';
     this.cityLabels.forEach((l) => (l.visible = showLabels));
+    this.beacons.forEach((b) => (b.userData.beam.visible = showLabels)); // tall beams only on the globe views, never through the envelope
     this.camera.position.copy(camPos);
     this.camLook.copy(camLook);
     this.camera.lookAt(camLook);
