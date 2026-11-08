@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Editor · Anniversary</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>" />
+  <link rel="stylesheet" href="css/editor.css" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>🌙 Anniversary editor</h1>
+      <p class="muted">Change the texts, add photos, song clips and the video, preview, then publish. She never sees this page.</p>
+    </div>
+    <div class="top-actions">
+      <select id="preview-from" title="where the preview starts">
+        <option value="">Preview from start</option>
+        <option value="intro">Preview from chat intro</option>
+        <option value="game">Preview from game</option>
+        <option value="finale">Preview the finale</option>
+      </select>
+      <button id="preview-btn" class="btn">👀 Preview</button>
+      <button id="download-btn" class="btn ghost">⬇ content.json</button>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <section class="panel publish">
+    <h2>🚀 Publish to GitHub</h2>
+    <p class="muted">Uploads your new files to <code>media/</code> and saves <code>content.json</code> straight into the repo. GitHub Pages updates about 1 minute later.</p>
+    <details>
+      <summary>How do I get a token? (one-time, 2 minutes)</summary>
+      <ol>
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
+        <li>Repository access: <b>Only select repositories</b> → pick this repo.</li>
+        <li>Permissions → Repository permissions → <b>Contents: Read and write</b>.</li>
+        <li>Generate, copy it, and paste it below. It stays in this browser only and is never put in the website.</li>
+      </ol>
+    </details>
+    <div class="grid3">
+      <label>Owner <input id="gh-owner" placeholder="zawkey2412" /></label>
+      <label>Repository <input id="gh-repo" placeholder="Anniversary" /></label>
+      <label>Branch <input id="gh-branch" placeholder="branch GitHub Pages uses" /></label>
+    </div>
+    <label>Token <input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" /></label>
+    <label class="check"><input id="gh-remember" type="checkbox" /> Remember token on this device</label>
+    <div class="row">
+      <button id="publish-btn" class="btn big">Publish 💜</button>
+      <span id="pending-count" class="muted"></span>
+    </div>
+    <pre id="log" class="log hidden"></pre>
+  </section>
+
+  <footer class="muted foot">Your edits are auto-saved as a draft in this browser. <button id="reset-btn" class="link">Discard draft &amp; reload from site</button></footer>
+
+  <script type="module" src="js/editor.js"></script>
+</body>
+</html>

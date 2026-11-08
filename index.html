@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Ay Yüzlüm 🌙</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    { "imports": { "three": "./assets/vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- Gate -->
+  <section id="gate" class="screen active">
+    <div class="moon-emoji">🌙</div>
+    <h1 id="gate-question">When did our story start?</h1>
+    <form id="gate-form" autocomplete="off">
+      <input id="gate-input" inputmode="numeric" placeholder="dd.mm" aria-label="date" />
+      <button type="submit" class="btn">Enter</button>
+    </form>
+    <p id="gate-hint" class="hint"></p>
+    <p id="gate-error" class="error" aria-live="polite"></p>
+  </section>
+
+  <!-- Intro chat -->
+  <section id="intro" class="screen">
+    <div id="chat" class="chat"></div>
+    <div id="intro-card" class="card hidden">
+      <p class="eyebrow">a tiny game for you</p>
+      <h2 id="intro-title"></h2>
+      <p id="intro-subtitle"></p>
+      <p id="intro-howto" class="hint"></p>
+      <button id="start-btn" class="btn big">Start the journey ✨</button>
+    </div>
+  </section>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-left">
+      <div class="hud-city"><span id="hud-from">Istanbul</span> → <span id="hud-to">Bandung</span></div>
+      <div class="progress"><div id="progress-bar"></div><div id="progress-heart">💌</div></div>
+      <div id="hud-km" class="hud-km">9,571 km to go</div>
+    </div>
+    <div class="hud-right">
+      <div id="hud-stars">⭐ 0</div>
+      <button id="mute-btn" class="icon-btn hidden" aria-label="toggle music">🔊</button>
+    </div>
+  </div>
+  <div id="touch-hint" class="touch-hint hidden">hold to fly up ☝️</div>
+
+  <!-- Modal for checkpoints -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div id="modal-card" class="card modal-card"></div>
+  </div>
+
+  <!-- Finale -->
+  <section id="finale" class="screen">
+    <div class="finale-inner">
+      <p id="finale-delivered" class="eyebrow big-eyebrow"></p>
+      <p id="finale-line" class="finale-line"></p>
+      <div id="clocks" class="clocks"></div>
+      <button id="letter-btn" class="btn big">Open your letter 💌</button>
+      <article id="letter" class="letter hidden">
+        <h2 id="letter-title"></h2>
+        <div id="letter-body"></div>
+        <p id="letter-sign" class="sign"></p>
+        <div id="video-wrap" class="video-wrap"></div>
+        <p id="closing" class="closing"></p>
+        <p id="finale-stats" class="hint"></p>
+        <button id="replay-btn" class="btn ghost">Play again 🌙</button>
+      </article>
+    </div>
+  </section>
+
+  <div id="loading" class="loading">🌙</div>
+  <audio id="music" loop preload="none"></audio>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
