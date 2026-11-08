@@ -5,7 +5,7 @@ import { ICONS } from './icons.js';
 
 const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
-const FLY_SPEED = 6.2, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
+const FLY_SPEED = 4.3, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
 const SAFE_Z = 4, SAFE_XY = 1.5;
 const MAX_VX = 2.8, MAX_VY = 3.8;                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
@@ -200,7 +200,7 @@ export class World {
     this.distanceKm = Math.round(6371 * this.omega);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // lighter on phones, still sharp
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#0b1430');
@@ -601,7 +601,8 @@ export class World {
     const spawnLead = -SPAWN_Z;                       // distance from spawn point to the envelope
     if (this.nextCheckpoint < n && this.travel >= (this.nextCheckpoint + 1) * SEG_DIST - spawnLead) {
       const cp = cps[this.nextCheckpoint];
-      this.spawn('ring', 0, 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
+      const ring = this.spawn('ring', 0, 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
+      ring.mesh.position.z = Math.max(SPAWN_Z, this.travel - (this.nextCheckpoint + 1) * SEG_DIST); // arrive exactly at its distance
       this.nextCheckpoint++;
     }
 
@@ -613,12 +614,12 @@ export class World {
     const arriving = arriveAt > total - 3;
     const quietZone = nearRing(8, GRACE_DIST);        // no clouds/hearts just before a ring or in the 2 s after it
     if (!quietZone && !arriving && this.spawnClock <= 0) {
-      this.spawnClock = 1.2 + Math.random() * 0.9;
+      this.spawnClock = 1.75 + Math.random() * 1.3;
       const count = Math.random() < 0.2 ? 2 : 1;
       for (let i = 0; i < count; i++) this.spawnCloud();
       if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!arriving && !nearRing(3, GRACE_DIST) && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
+    if (!arriving && !nearRing(3, GRACE_DIST) && this.starClock <= 0) { this.starClock = 3.4 + Math.random() * 1.4; this.spawnStars(); }
     if (!quietZone && !arriving && this.heartClock <= 0) {
       this.heartClock = 13 + Math.random() * 8;
       const hx = (Math.random() * 2 - 1) * (LANE_X - 0.4), hy = 0.4 + Math.random() * (LANE_MAX - 0.8);
