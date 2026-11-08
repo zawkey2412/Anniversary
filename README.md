@@ -1,4 +1,4 @@
-# 🌙 Moonlight Courier: a first-anniversary gift
+# ✉ Moonlight Courier: a first-anniversary gift
 
 A small 3D browser game for Ay Yüzlüm. She carries a glowing 💜 message 9,571 km from Istanbul to Bandung under the moon. Along the way she collects stars, avoids clouds, and flies through rings that open memories, *guess the number* questions and *guess the song* questions. When she lands, the letter and the video appear.
 
@@ -14,7 +14,7 @@ Plain HTML, CSS and JS with Three.js included in the repo. There is no build ste
 | `media/` | Uploaded photos, audio and video |
 | `js/world.js` | 3D scene and game |
 | `js/main.js` | Flow: gate → chat intro → game → checkpoints → finale |
-| `assets/` | Three.js and the dotted-globe land data |
+| `assets/` | Three.js, the dotted-globe land data, and sound effects |
 
 ## 1. Put it online (GitHub Pages, one time)
 
@@ -49,3 +49,8 @@ python3 -m http.server 8000
 ## Password
 
 Any of `content.json → settings.passwords` works, written any way she likes: `08.11`, `8/11`, `0811`, `09.11.2025`, …
+
+## Credits
+
+Sound effects: [Kenney](https://kenney.nl) Interface, RPG and Impact sound packs, CC0 (public domain). See `assets/sfx/LICENSE-kenney-CC0.txt`.
+Fonts: Caveat, Lora, Special Elite (Google Fonts, OFL).

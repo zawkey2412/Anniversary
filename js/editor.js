@@ -122,8 +122,8 @@ function render() {
   const g = document.createElement('div'); g.className = 'grid2';
   g.append(field('Her name / nickname', S, 'herName'), field('Your name', S, 'yourName'));
   basics.append(g,
-    field('Gate question', S, 'gateQuestion'),
-    field('Gate hint', S, 'gateHint'),
+    field('Envelope hint (what the postcode is)', S, 'gateQuestion'),
+    field('Postcode format hint', S, 'gateHint'),
     field('Accepted passwords (comma separated)', S, 'passwords', {
       toText: (v) => (v || []).join(', '), fromText: (v) => v.split(',').map((s) => s.trim()).filter(Boolean),
       tip: 'Dots, slashes and spaces are ignored, so "08.11", "8/11" and "0811" all work. This is just a cute lock, not real security.',
@@ -141,7 +141,7 @@ function render() {
   add.innerHTML = '<button class="btn small" data-add="memory">+ Memory 📷</button><button class="btn small" data-add="number">+ Guess the number 🔢</button><button class="btn small" data-add="song">+ Guess the song 🎧</button>';
   add.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => {
     const t = b.dataset.add;
-    data.checkpoints.push(t === 'memory' ? { type: 'memory', date: '', title: 'New memory', quote: '', quoteBy: 'you', text: '', image: '' }
+    data.checkpoints.push(t === 'memory' ? { type: 'memory', date: '', title: 'New memory', quote: '', quoteBy: 'you', text: '', image: '', caption: '♥' }
       : t === 'number' ? { type: 'number', question: 'New question?', hint: '', answer: 0, unit: '', reveal: '' }
       : { type: 'song', question: 'Guess the song 🎧', hint: '', audio: '', options: ['', '', '', ''], answer: 0, reveal: '' });
     save(); render();
@@ -174,7 +174,7 @@ function renderCheckpoint(cp, i) {
     const by = document.createElement('label'); by.textContent = 'Quote said by';
     by.innerHTML += `<select><option value="you">her</option><option value="me">me</option><option value="">nobody (no name)</option></select>`;
     const sel = $('select', by); sel.value = cp.quoteBy ?? 'you'; sel.onchange = () => { cp.quoteBy = sel.value; save(); };
-    box.append(g, mediaField('Photo', cp, 'image', 'image', () => cp.title), field('Quote (from your chat)', cp, 'quote', { textarea: true, rows: 2 }), by, field('Your words', cp, 'text', { textarea: true, rows: 3 }));
+    box.append(g, mediaField('Photo', cp, 'image', 'image', () => cp.title), field('Polaroid caption (handwritten under the photo)', cp, 'caption'), field('Quote (from your chat)', cp, 'quote', { textarea: true, rows: 2 }), by, field('Your words', cp, 'text', { textarea: true, rows: 3 }));
   } else if (cp.type === 'number') {
     const g = document.createElement('div'); g.className = 'grid2';
     g.append(field('Correct answer', cp, 'answer', { type: 'number' }), field('Unit (shown under the number)', cp, 'unit'));

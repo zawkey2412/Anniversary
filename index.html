@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Ay Yüzlüm 🌙</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>" />
+  <meta name="theme-color" content="#0b1430" />
+  <title>✉ For you</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💌</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Special+Elite&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
   <script type="importmap">
     { "imports": { "three": "./assets/vendor/three.module.min.js" } }
@@ -17,69 +18,118 @@
 <body>
   <canvas id="scene"></canvas>
 
-  <!-- Gate -->
+  <!-- 1. Gate: an envelope addressed to her -->
   <section id="gate" class="screen active">
-    <div class="moon-emoji">🌙</div>
-    <h1 id="gate-question">When did our story start?</h1>
-    <form id="gate-form" autocomplete="off">
-      <input id="gate-input" inputmode="numeric" placeholder="dd.mm" aria-label="date" />
-      <button type="submit" class="btn">Enter</button>
-    </form>
-    <p id="gate-hint" class="hint"></p>
-    <p id="gate-error" class="error" aria-live="polite"></p>
+    <div class="envelope-front airmail">
+      <div class="stamp gate-stamp"><span class="stamp-art">🌙</span><span class="stamp-txt">PAR AVION</span></div>
+      <div class="postmark gate-postmark"><span>BANDUNG</span><b>08·11·26</b><span>✉ ✉ ✉</span></div>
+      <div class="address">
+        <p class="to-label">To:</p>
+        <p id="gate-to" class="hand to-name">Ay Yüzlüm</p>
+        <p class="hand to-line">somewhere in Istanbul,</p>
+        <p class="hand to-line">under the same moon</p>
+      </div>
+      <form id="gate-form" autocomplete="off">
+        <label for="gate-input" class="type-label" id="gate-question">POSTCODE</label>
+        <div class="postcode-row">
+          <input id="gate-input" inputmode="numeric" placeholder="dd.mm" aria-label="postcode" />
+          <button type="submit" class="seal" aria-label="open">
+            <span>♥</span>
+          </button>
+        </div>
+        <p id="gate-hint" class="type-hint"></p>
+      </form>
+      <div id="gate-error" class="rubber-stamp red hidden" aria-live="polite"></div>
+      <p id="gate-from" class="from hand">from: Uqi, Bandung</p>
+    </div>
   </section>
 
-  <!-- Intro chat -->
+  <!-- 2. Intro: telegram, then boarding pass -->
   <section id="intro" class="screen">
-    <div id="chat" class="chat"></div>
-    <div id="intro-card" class="card hidden">
-      <p class="eyebrow">a tiny game for you</p>
-      <h2 id="intro-title"></h2>
-      <p id="intro-subtitle"></p>
-      <p id="intro-howto" class="hint"></p>
-      <button id="start-btn" class="btn big">Start the journey ✨</button>
+    <div id="telegram" class="telegram">
+      <div class="tg-head"><span>TELEGRAM</span><span>✦</span><span>TELGRAF</span></div>
+      <div class="tg-meta" id="tg-meta">No. 0001</div>
+      <div id="tg-lines" class="tg-lines"></div>
+    </div>
+
+    <div id="boarding" class="boarding hidden">
+      <div class="bp-main">
+        <div class="bp-top"><span>BOARDING PASS</span><span id="bp-flight">FLIGHT AY0811</span></div>
+        <h2 id="intro-title" class="hand"></h2>
+        <div class="bp-route">
+          <div><b id="bp-from-code">IST</b><span id="bp-from">Istanbul</span></div>
+          <div class="bp-plane">✈</div>
+          <div><b id="bp-to-code">BDO</b><span id="bp-to">Bandung</span></div>
+        </div>
+        <div class="bp-grid">
+          <div><small>PASSENGER</small><span>one 💌 message</span></div>
+          <div><small>SEAT</small><span>next to the moon</span></div>
+          <div><small>DISTANCE</small><span id="bp-km">9,571 km</span></div>
+          <div><small>GATE</small><span>08.11</span></div>
+        </div>
+        <p id="intro-subtitle" class="bp-note"></p>
+        <p id="intro-howto" class="bp-howto"></p>
+      </div>
+      <div class="bp-stub">
+        <div class="barcode"></div>
+        <button id="start-btn" class="btn-red">BOARD ✈</button>
+      </div>
     </div>
   </section>
 
   <!-- HUD -->
   <div id="hud" class="hidden">
-    <div class="hud-left">
-      <div class="hud-city"><span id="hud-from">Istanbul</span> → <span id="hud-to">Bandung</span></div>
-      <div class="progress"><div id="progress-bar"></div><div id="progress-heart">💌</div></div>
+    <div class="hud-ticket">
+      <div class="route">
+        <b id="hud-from">IST</b>
+        <div class="route-line"><div id="progress-bar"></div><span id="progress-plane">✈</span></div>
+        <b id="hud-to">BDO</b>
+      </div>
       <div id="hud-km" class="hud-km">9,571 km to go</div>
     </div>
     <div class="hud-right">
-      <div id="hud-stars">⭐ 0</div>
-      <button id="mute-btn" class="icon-btn hidden" aria-label="toggle music">🔊</button>
+      <button id="mute-btn" class="mute" aria-label="sound on/off">🔊</button>
+      <div class="stamp hud-stamp"><span id="hud-stars">★ 0</span></div>
     </div>
   </div>
   <div id="touch-hint" class="touch-hint hidden">hold to fly up ☝️</div>
 
-  <!-- Modal for checkpoints -->
+  <!-- Checkpoint modal -->
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div id="modal-card" class="card modal-card"></div>
+    <div id="modal-card" class="modal-card"></div>
   </div>
 
-  <!-- Finale -->
+  <!-- 4. Finale -->
   <section id="finale" class="screen">
     <div class="finale-inner">
-      <p id="finale-delivered" class="eyebrow big-eyebrow"></p>
+      <div id="delivered-stamp" class="rubber-stamp blue big"></div>
       <p id="finale-line" class="finale-line"></p>
       <div id="clocks" class="clocks"></div>
-      <button id="letter-btn" class="btn big">Open your letter 💌</button>
+
+      <div id="env-wrap" class="env-wrap">
+        <div class="env" id="env">
+          <div class="env-back airmail"></div>
+          <div class="env-peek"><span class="hand">for you…</span></div>
+          <div class="env-pocket airmail"></div>
+          <div class="env-flap"></div>
+          <button id="letter-btn" class="seal big-seal" aria-label="open your letter"><span>♥</span></button>
+        </div>
+        <p class="env-hint">tap the seal to open</p>
+      </div>
+
       <article id="letter" class="letter hidden">
-        <h2 id="letter-title"></h2>
+        <h2 id="letter-title" class="hand"></h2>
         <div id="letter-body"></div>
-        <p id="letter-sign" class="sign"></p>
+        <p id="letter-sign" class="sign hand"></p>
         <div id="video-wrap" class="video-wrap"></div>
-        <p id="closing" class="closing"></p>
-        <p id="finale-stats" class="hint"></p>
-        <button id="replay-btn" class="btn ghost">Play again 🌙</button>
+        <p id="closing" class="closing hand"></p>
+        <p id="finale-stats" class="stats"></p>
+        <button id="replay-btn" class="btn-ghost">↺ deliver it again</button>
       </article>
     </div>
   </section>
 
-  <div id="loading" class="loading">🌙</div>
+  <div id="loading" class="loading"><div class="stamp"><span class="stamp-art">✉</span></div></div>
   <audio id="music" loop preload="none"></audio>
 
   <script type="module" src="js/main.js"></script>

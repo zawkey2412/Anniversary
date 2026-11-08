@@ -2,12 +2,33 @@
   "settings": {
     "herName": "Ay Yüzlüm",
     "yourName": "Uqi",
-    "passwords": ["0811", "0911", "08112025", "09112025", "081125", "091125"],
-    "gateQuestion": "When did our story start?",
-    "gateHint": "the night of the 8th–9th… (dd.mm)",
+    "passwords": [
+      "0811",
+      "0911",
+      "08112025",
+      "09112025",
+      "081125",
+      "091125"
+    ],
+    "gateQuestion": "the night our story started",
+    "gateHint": "dd.mm",
     "music": "",
-    "cityA": { "name": "Istanbul", "lat": 41.0082, "lon": 28.9784, "timeZone": "Europe/Istanbul", "who": "you" },
-    "cityB": { "name": "Bandung", "lat": -6.9175, "lon": 107.6191, "timeZone": "Asia/Jakarta", "who": "me" }
+    "cityA": {
+      "name": "Istanbul",
+      "lat": 41.0082,
+      "lon": 28.9784,
+      "timeZone": "Europe/Istanbul",
+      "who": "you",
+      "code": "IST"
+    },
+    "cityB": {
+      "name": "Bandung",
+      "lat": -6.9175,
+      "lon": 107.6191,
+      "timeZone": "Asia/Jakarta",
+      "who": "me",
+      "code": "BDO"
+    }
   },
   "intro": {
     "lines": [
@@ -18,8 +39,8 @@
       "Uqi: Well... He's here then"
     ],
     "title": "Moonlight Courier",
-    "subtitle": "A message has to travel 9,571 km from Istanbul to Bandung tonight. Only you can deliver it.",
-    "howTo": "Hold (or press space) to fly up · let go to float down · collect the stars · avoid the clouds"
+    "subtitle": "One very important message has to travel 9,571 km tonight, from Istanbul to Bandung. Only you can deliver it.",
+    "howTo": "HOLD to fly up · LET GO to float down · catch the stars · dodge the clouds · fly through the stamped rings"
   },
   "checkpoints": [
     {
@@ -29,7 +50,8 @@
       "quote": "Im looking for the guy i love is he here????",
       "quoteBy": "you",
       "text": "And somehow the guy you were looking for was right here. One year later, he still is.",
-      "image": ""
+      "image": "",
+      "caption": "where it started"
     },
     {
       "type": "number",
@@ -46,14 +68,20 @@
       "quote": "smth like 'pretty like the moon' and the translation is 'my moon-faced one'",
       "quoteBy": "you",
       "text": "That's why this whole thing happens under the moon. It's your name in my phone, and it's the one thing we can both look at, at the same time.",
-      "image": ""
+      "image": "",
+      "caption": "my moon-faced one"
     },
     {
       "type": "song",
       "question": "Guess the song 🎧",
       "hint": "One of the songs we sent each other.",
       "audio": "",
-      "options": ["Song title A", "Song title B", "Song title C", "Song title D"],
+      "options": [
+        "Song title A",
+        "Song title B",
+        "Song title C",
+        "Song title D"
+      ],
       "answer": 0,
       "reveal": "Placeholder – write why this song reminds you of her."
     },
@@ -64,7 +92,8 @@
       "quote": "Oh now its our first month together btww",
       "quoteBy": "you",
       "text": "I said \"You mean three months\". You said \"6 actually\". Neither of us was counting right, because it already felt longer.",
-      "image": ""
+      "image": "",
+      "caption": "month one ♥"
     },
     {
       "type": "number",
@@ -81,7 +110,8 @@
       "quote": "connection is not about proximity, but about hearts choosing each other again and again.",
       "quoteBy": "you",
       "text": "You wrote me a whole letter from Türkiye. I still read it.",
-      "image": ""
+      "image": "",
+      "caption": "24.12"
     },
     {
       "type": "number",
@@ -98,14 +128,20 @@
       "quote": "But you are the loser always💜",
       "quoteBy": "you",
       "text": "The only game where losing to you still feels like winning.",
-      "image": ""
+      "image": "",
+      "caption": "loser (you) ♥"
     },
     {
       "type": "song",
       "question": "One more song 🎶",
       "hint": "This one is from me to you.",
       "audio": "",
-      "options": ["Song title A", "Song title B", "Song title C", "Song title D"],
+      "options": [
+        "Song title A",
+        "Song title B",
+        "Song title C",
+        "Song title D"
+      ],
       "answer": 1,
       "reveal": "Placeholder – write why this song is yours."
     },
@@ -116,11 +152,12 @@
       "quote": "Sweet dreamsssss. Dream aboutmeeee",
       "quoteBy": "you",
       "text": "4 hours apart, you always fall asleep first, and I always stay up a little longer just to say it back.",
-      "image": ""
+      "image": "",
+      "caption": "every night"
     }
   ],
   "finale": {
-    "delivered": "Message delivered 💜",
+    "delivered": "Delivered ✓",
     "line": "9,571 km. 4 hours apart. And every single message still found its way to you.",
     "letterTitle": "Happy first anniversary, Ay Yüzlüm",
     "letter": [

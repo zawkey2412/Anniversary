@@ -1,5 +1,6 @@
 // The 3D world: dotted globe, moon, stars, the courier game and the finale view.
 import * as THREE from 'three';
+import { sfx } from './sfx.js';
 
 const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15;
@@ -48,7 +49,7 @@ function moonTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-function textSprite(lines, { color = '#f4eefe', sub = '#c9b6f2', scale = 1 } = {}) {
+function textSprite(lines, { color = '#fbf6ea', sub = '#f3d9a4', scale = 1 } = {}) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 160;
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -56,8 +57,8 @@ function textSprite(lines, { color = '#f4eefe', sub = '#c9b6f2', scale = 1 } = {
   sprite.userData.draw = (l) => {
     const g = c.getContext('2d'); g.clearRect(0, 0, 512, 160);
     g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,0.8)'; g.shadowBlur = 12;
-    g.fillStyle = color; g.font = '700 54px Quicksand, system-ui, sans-serif'; g.fillText(l[0], 256, 64);
-    if (l[1]) { g.fillStyle = sub; g.font = '600 38px Quicksand, system-ui, sans-serif'; g.fillText(l[1], 256, 122); }
+    g.fillStyle = color; g.font = '700 64px Caveat, "Segoe Script", cursive'; g.fillText(l[0], 256, 64);
+    if (l[1]) { g.fillStyle = sub; g.font = '36px "Special Elite", "Courier New", monospace'; g.fillText(l[1], 256, 122); }
     tex.needsUpdate = true;
   };
   sprite.userData.draw(lines);
@@ -71,18 +72,36 @@ function emojiTexture(emoji) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-function heartGeometry() {
-  const s = new THREE.Shape(), x = 0, y = 0;
-  s.moveTo(x + 5, y + 5);
-  s.bezierCurveTo(x + 5, y + 5, x + 4, y, x, y);
-  s.bezierCurveTo(x - 6, y, x - 6, y + 7, x - 6, y + 7);
-  s.bezierCurveTo(x - 6, y + 11, x - 3, y + 15.4, x + 5, y + 19);
-  s.bezierCurveTo(x + 12, y + 15.4, x + 16, y + 11, x + 16, y + 7);
-  s.bezierCurveTo(x + 16, y + 7, x + 16, y, x + 10, y);
-  s.bezierCurveTo(x + 7, y, x + 5, y + 5, x + 5, y + 5);
-  const geo = new THREE.ExtrudeGeometry(s, { depth: 4, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 1.5, bevelThickness: 1.5 });
-  geo.center(); geo.rotateZ(Math.PI); geo.scale(0.022, 0.022, 0.022);
-  return geo;
+function envelopeTexture() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 336;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbf6ea'; g.fillRect(0, 0, 512, 336);
+  // airmail border
+  g.save(); g.beginPath(); g.rect(0, 0, 512, 336); g.rect(22, 22, 468, 292); g.clip('evenodd');
+  for (let i = -40; i < 900; i += 44) {
+    g.fillStyle = (i / 44) % 2 ? '#1f4ea3' : '#c8352e';
+    g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 22, 0); g.lineTo(i - 314, 336); g.lineTo(i - 336, 336); g.closePath(); g.fill();
+  }
+  g.restore();
+  // flap
+  g.strokeStyle = '#d8c9a8'; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(24, 26); g.lineTo(256, 190); g.lineTo(488, 26); g.stroke();
+  g.beginPath(); g.moveTo(24, 312); g.lineTo(200, 170); g.moveTo(488, 312); g.lineTo(312, 170); g.stroke();
+  // wax seal
+  const grd = g.createRadialGradient(248, 182, 6, 256, 190, 46);
+  grd.addColorStop(0, '#e2554c'); grd.addColorStop(1, '#8f1f1a');
+  g.fillStyle = grd; g.beginPath();
+  for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2, r = k % 2 ? 44 : 48; g.lineTo(256 + Math.cos(a) * r, 190 + Math.sin(a) * r); }
+  g.closePath(); g.fill();
+  g.fillStyle = '#f7d3c9'; g.font = '44px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♥', 256, 192);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+
+function airmailStripes() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 32;
+  const g = c.getContext('2d'); const cols = ['#c8352e', '#fbf6ea', '#1f4ea3', '#fbf6ea'];
+  for (let i = -2; i < 12; i++) { g.fillStyle = cols[((i % 4) + 4) % 4]; g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32 + 32, 0); g.lineTo(i * 32 + 16, 32); g.lineTo(i * 32 - 16, 32); g.closePath(); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 1); return t;
 }
 
 function starGeometry() {
@@ -96,28 +115,14 @@ function starGeometry() {
   geo.center(); return geo;
 }
 
-// ---------- tiny synth for sound effects ----------
-class Sfx {
-  constructor() { this.ctx = null; this.muted = false; }
-  ensure() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { /* no audio */ } } if (this.ctx?.state === 'suspended') this.ctx.resume(); }
-  tone(freq, dur = 0.15, type = 'sine', vol = 0.08, slide = 0) {
-    if (this.muted || !this.ctx) return;
-    const t = this.ctx.currentTime, o = this.ctx.createOscillator(), g = this.ctx.createGain();
-    o.type = type; o.frequency.setValueAtTime(freq, t); if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + dur + 0.02);
-  }
-  star() { this.tone(880, 0.12, 'triangle', 0.07); setTimeout(() => this.tone(1320, 0.18, 'triangle', 0.06), 70); }
-  bump() { this.tone(180, 0.25, 'sine', 0.12, 0.5); }
-  chime() { [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => this.tone(f, 0.4, 'sine', 0.05), i * 90)); }
-}
 
 // ---------- the world ----------
 export class World {
   constructor(canvas, content) {
     this.content = content;
     this.canvas = canvas;
-    this.sfx = new Sfx();
+    this.sfx = sfx;
+    this.combo = 0; this.lastStarAt = -9;
     this.mode = 'idle';          // idle | toGame | game | toFinale | finale
     this.paused = false;
     this.holding = false;
@@ -139,11 +144,11 @@ export class World {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#07041a');
-    this.scene.fog = new THREE.FogExp2('#0b0626', 0.006);
+    this.scene.background = new THREE.Color('#0b1430');
+    this.scene.fog = new THREE.FogExp2('#0e1a3a', 0.006);
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.05, 600);
 
-    this.tex = { glow: glowTexture(), dot: dotTexture(), pinkGlow: glowTexture('rgba(255,255,255,1)', 'rgba(255,143,209,0.55)') };
+    this.tex = { glow: glowTexture(), dot: dotTexture(), pinkGlow: glowTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0.45)'), warm: glowTexture('rgba(255,250,235,1)', 'rgba(255,210,150,0.5)') };
     this.buildLights(); this.buildSky(); this.buildGlobe(); this.buildMoon(); this.buildCourier(); this.buildPools();
 
     this.idleQuat = new THREE.Quaternion();
@@ -171,14 +176,14 @@ export class World {
 
   // ---------- build ----------
   buildLights() {
-    this.scene.add(new THREE.AmbientLight('#8e7cc3', 0.9));
+    this.scene.add(new THREE.AmbientLight('#9fb0d8', 0.95));
     const sun = new THREE.DirectionalLight('#fff4e8', 2.2); sun.position.set(-6, 4, 8); this.scene.add(sun);
-    const rim = new THREE.DirectionalLight('#b38bff', 1.2); rim.position.set(5, -2, -6); this.scene.add(rim);
+    const rim = new THREE.DirectionalLight('#7fa6ff', 1.1); rim.position.set(5, -2, -6); this.scene.add(rim);
   }
 
   buildSky() {
     const n = 2600, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-    const palette = [new THREE.Color('#ffffff'), new THREE.Color('#d9c8ff'), new THREE.Color('#ffc8ec'), new THREE.Color('#bcd2ff')];
+    const palette = [new THREE.Color('#ffffff'), new THREE.Color('#fff1d6'), new THREE.Color('#ffd9c2'), new THREE.Color('#c9dbff')];
     for (let i = 0; i < n; i++) {
       const v = new THREE.Vector3().randomDirection().multiplyScalar(220 + Math.random() * 120);
       pos.set([v.x, v.y, v.z], i * 3);
@@ -192,7 +197,7 @@ export class World {
 
     // soft nebula blobs
     const neb = new THREE.Group();
-    [['#5b2bb5', -120, 60, -200, 160], ['#a0367a', 140, -40, -220, 140], ['#2b3fa8', 30, 120, -260, 180]].forEach(([c, x, y, z, s]) => {
+    [['#1f4ea3', -120, 60, -200, 170], ['#8a2c3a', 140, -40, -220, 140], ['#2a4f8f', 30, 120, -260, 180]].forEach(([c, x, y, z, s]) => {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(c, c + '55'), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
       sp.position.set(x, y, z); sp.scale.set(s, s, 1); neb.add(sp);
     });
@@ -203,13 +208,13 @@ export class World {
     this.globe = new THREE.Group();
     this.scene.add(this.globe);
 
-    const ocean = new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 96, 64), new THREE.MeshStandardMaterial({ color: '#160b38', roughness: 0.85, metalness: 0.1, emissive: '#0d0626' }));
+    const ocean = new THREE.Mesh(new THREE.SphereGeometry(R * 0.995, 96, 64), new THREE.MeshStandardMaterial({ color: '#13224a', roughness: 0.85, metalness: 0.1, emissive: '#0a1430' }));
     this.globe.add(ocean);
 
     // atmosphere glow (fresnel)
     const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.12, 64, 48), new THREE.ShaderMaterial({
       transparent: true, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending,
-      uniforms: { c: { value: new THREE.Color('#9b6bff') } },
+      uniforms: { c: { value: new THREE.Color('#7fa6ff') } },
       vertexShader: 'varying vec3 vN; varying vec3 vP; void main(){ vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.0); vP = mv.xyz; gl_Position = projectionMatrix*mv; }',
       fragmentShader: 'uniform vec3 c; varying vec3 vN; varying vec3 vP; void main(){ float d = clamp(-dot(vN, normalize(-vP)), 0.0, 1.0); float f = pow(d, 1.6) * 1.6; gl_FragColor = vec4(c, clamp(f, 0.0, 0.9)); }',
     }));
@@ -218,7 +223,7 @@ export class World {
     // land dots (loaded later)
     this.landReady = fetch('assets/land-dots.bin').then((r) => r.arrayBuffer()).then((buf) => {
       const arr = new Int16Array(buf), n = arr.length / 2, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
-      const c1 = new THREE.Color('#c9a7ff'), c2 = new THREE.Color('#ff9ad5'), tmp = new THREE.Color();
+      const c1 = new THREE.Color('#f6e7c1'), c2 = new THREE.Color('#ffc98a'), tmp = new THREE.Color();
       for (let i = 0; i < n; i++) {
         const v = latLonToVec(arr[i * 2] / 100, arr[i * 2 + 1] / 100, R * 1.002);
         pos.set([v.x, v.y, v.z], i * 3);
@@ -233,7 +238,7 @@ export class World {
     // city beacons + labels
     const s = this.content.settings;
     this.cityLabels = [];
-    [[this.cityA, s.cityA, '#ff9ad5'], [this.cityB, s.cityB, '#c9a7ff']].forEach(([v, info, color]) => {
+    [[this.cityA, s.cityA, '#ff5a4f'], [this.cityB, s.cityB, '#6b9bff']].forEach(([v, info, color]) => {
       const g = new THREE.Group();
       const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, 2.6, 12, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       beam.position.y = 1.3; g.add(beam);
@@ -256,10 +261,10 @@ export class World {
     for (let i = 0; i <= 200; i++) { const t = i / 200; pts.push(this.pathPoint(t).multiplyScalar(R + 0.12 + Math.sin(Math.PI * t) * 1.6)); }
     this.arcSegments = 240; this.arcRadial = 8;
     const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), this.arcSegments, 0.045, this.arcRadial, false);
-    this.arc = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: '#ffb3e6', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.arc = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: '#ffe2b0', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
     this.arc.geometry.setDrawRange(0, 0);
     this.globe.add(this.arc);
-    this.arcGhost = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: '#8f6bd6', transparent: true, opacity: 0.18, depthWrite: false }));
+    this.arcGhost = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: '#8aa6e8', transparent: true, opacity: 0.2, depthWrite: false }));
     this.globe.add(this.arcGhost);
   }
 
@@ -283,35 +288,38 @@ export class World {
 
   buildCourier() {
     const g = new THREE.Group();
-    const heart = new THREE.Mesh(heartGeometry(), new THREE.MeshStandardMaterial({ color: '#b07bff', emissive: '#7b3fe4', emissiveIntensity: 0.8, roughness: 0.35, metalness: 0.2 }));
-    g.add(heart); this.heart = heart;
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.pinkGlow, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
-    glow.scale.set(1.5, 1.5, 1); g.add(glow); this.courierGlow = glow;
-    const light = new THREE.PointLight('#d29bff', 6, 6, 1.6); g.add(light);
+    const envTex = envelopeTexture();
+    const face = new THREE.MeshStandardMaterial({ map: envTex, emissiveMap: envTex, emissive: '#ffffff', emissiveIntensity: 0.55, roughness: 0.8 });
+    const edge = new THREE.MeshStandardMaterial({ color: '#efe4cc', roughness: 0.9 });
+    const env = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.62, 0.04), [edge, edge, edge, edge, face, face]);
+    env.scale.setScalar(1.25); g.add(env); this.envelope = env;
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.set(2.0, 2.0, 1); glow.position.z = -0.1; g.add(glow); this.courierGlow = glow;
+    const light = new THREE.PointLight('#ffd9a0', 6, 6, 1.6); g.add(light);
     g.visible = false;
     this.courier = g; this.scene.add(g);
     this.courierY = 1.2; this.courierVy = 0; this.hitTimer = 0;
 
     // trail particles
     this.trail = [];
-    const tm = new THREE.SpriteMaterial({ map: this.tex.pinkGlow, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+    const tm = new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     for (let i = 0; i < 40; i++) { const s = new THREE.Sprite(tm.clone()); s.visible = false; this.scene.add(s); this.trail.push({ s, life: 0 }); }
     this.trailIdx = 0; this.trailTimer = 0;
   }
 
   buildPools() {
-    this.geo = { star: starGeometry(), puff: new THREE.SphereGeometry(1, 16, 12), ring: new THREE.TorusGeometry(2.1, 0.09, 12, 64) };
+    this.geo = { star: starGeometry(), puff: new THREE.SphereGeometry(1, 16, 12), ring: new THREE.TorusGeometry(2.1, 0.11, 12, 96) };
     this.mat = {
-      star: new THREE.MeshStandardMaterial({ color: '#ffe08a', emissive: '#ffb347', emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.4 }),
-      cloud: new THREE.MeshStandardMaterial({ color: '#cfc3f0', emissive: '#3c2a6e', emissiveIntensity: 0.4, roughness: 1, transparent: true, opacity: 0.92 }),
-      ring: new THREE.MeshBasicMaterial({ color: '#ff9ad5', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
+      star: new THREE.MeshStandardMaterial({ color: '#ffe08a', emissive: '#e9a23b', emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.4 }),
+      cloud: new THREE.MeshStandardMaterial({ color: '#e7e3f2', emissive: '#28345e', emissiveIntensity: 0.45, roughness: 1, transparent: true, opacity: 0.93 }),
+      ring: new THREE.MeshBasicMaterial({ map: airmailStripes(), fog: false }),
     };
     this.lane = new THREE.Group(); this.scene.add(this.lane);
     // speed dust
     const n = 160, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) pos.set([(Math.random() - 0.5) * 16, LANE_BASE - 1 + Math.random() * 7, SPAWN_Z + Math.random() * (KILL_Z - SPAWN_Z)], i * 3);
     const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.08, map: this.tex.glow, color: '#e9dcff', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
+    this.dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.08, map: this.tex.glow, color: '#fff1d6', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
     this.dust.visible = false; this.scene.add(this.dust);
   }
 
@@ -387,7 +395,6 @@ export class World {
     this.quatFrom = this.globe.quaternion.clone();
     this.courier.visible = false; this.dust.visible = false;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
-    this.sfx.chime();
   }
 
   showFinaleDirect() {
@@ -409,7 +416,7 @@ export class World {
     else if (kind === 'ring') {
       mesh = new THREE.Group();
       mesh.add(new THREE.Mesh(this.geo.ring, this.mat.ring));
-      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.pinkGlow, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(6, 6, 1); mesh.add(glow);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(6, 6, 1); mesh.add(glow);
       const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTexture(extra.icon), transparent: true, depthWrite: false })); icon.scale.set(1.3, 1.3, 1); mesh.add(icon);
     } else if (kind === 'deco') { mesh = this.makeCloud(); mesh.scale.setScalar(1.6 + Math.random()); }
     const x = kind === 'deco' ? (Math.random() < 0.5 ? -1 : 1) * (3.5 + Math.random() * 5) : 0;
@@ -438,7 +445,7 @@ export class World {
     const quietZone = this.nextCheckpoint < cps.length && this.progress > this.cpAt(this.nextCheckpoint) - 0.025;
     if (this.nextCheckpoint < cps.length && this.progress >= this.cpAt(this.nextCheckpoint) && !this.objects.some((o) => o.kind === 'ring')) {
       const cp = cps[this.nextCheckpoint];
-      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: cp.type === 'memory' ? '📷' : cp.type === 'song' ? '🎧' : '🔢' });
+      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: cp.type === 'memory' ? '💌' : cp.type === 'song' ? '📼' : '🔢' });
       this.nextCheckpoint++;
     }
 
@@ -469,11 +476,11 @@ export class World {
       if (!o.alive) continue;
       const dz = Math.abs(o.mesh.position.z), dy = Math.abs(o.y - this.courierY);
       if (o.kind === 'star' && dz < 0.45 && dy < 0.5) {
-        o.alive = false; this.lane.remove(o.mesh); this.starsCollected++; this.sfx.star(); this.emit('stars', this.starsCollected);
+        o.alive = false; this.lane.remove(o.mesh); this.starsCollected++; this.combo = this.time - this.lastStarAt < 0.9 ? this.combo + 1 : 0; this.lastStarAt = this.time; this.sfx.play('star', { rate: 1 + Math.min(this.combo, 8) * 0.06, jitter: 0 }); this.emit('stars', this.starsCollected);
       } else if (o.kind === 'cloud' && dz < 0.5 && dy < 0.5 && this.hitTimer <= 0) {
-        o.alive = false; this.hitTimer = 1.1; this.sfx.bump(); this.courierVy = -1.5; this.emit('bump');
+        o.alive = false; this.hitTimer = 1.1; this.sfx.play('bump'); this.courierVy = -1.5; this.emit('bump');
       } else if (o.kind === 'ring' && o.mesh.position.z > -0.1) {
-        o.alive = false; this.lane.remove(o.mesh); this.sfx.chime(); this.emit('checkpoint', o.index);
+        o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.emit('checkpoint', o.index);
       }
     }
     this.objects = this.objects.filter((o) => {
@@ -538,7 +545,8 @@ export class World {
       const cy = LANE_BASE + this.courierY + Math.sin(t * 3) * 0.05;
       this.courier.position.set(0, cy, 0);
       this.courier.rotation.set(-this.courierVy * 0.12, Math.sin(t * 1.5) * 0.25, Math.sin(t * 2) * 0.08);
-      this.heart.material.emissiveIntensity = this.hitTimer > 0 ? (Math.sin(t * 40) > 0 ? 0.2 : 1.2) : 0.8 + Math.sin(t * 4) * 0.2;
+      this.envelope.visible = !(this.hitTimer > 0 && Math.sin(t * 40) > 0.3);
+      this.courierGlow.material.opacity = 0.45 + Math.sin(t * 4) * 0.12;
       // trail
       this.trailTimer -= dt;
       if (!this.paused && this.trailTimer <= 0) {
