@@ -5,7 +5,7 @@
 import { sfx } from './sfx.js';
 
 export const SNIPPET_STEPS = [1, 2, 4, 7, 11, 16]; // seconds, like the song-guessing games
-export const LEVEL = { song: 1, background: 0.55 }; // background sits a little under normal
+export const LEVEL = { song: 1, background: 0.45 }; // background sits under normal
 const TARGET_RMS = 0.12;                            // ≈ -18 dBFS: comfortable "normal" loudness on phones
 const CHUNK = 600000;                               // bytes analysed (~35 s of a 128 kbps mp3)
 
@@ -118,12 +118,15 @@ export class SongPlayer {
   // gentle pause / resume (used for the background music)
   pause(fade = 0) {
     cancelAnimationFrame(this.raf);
-    if (fade && this.gain && !this.el.paused) { this.fadeTo(0, fade); setTimeout(() => this.el.pause(), fade * 1000 + 20); }
+    clearTimeout(this.pauseTimer);
+    if (fade && this.gain && !this.el.paused) { this.fadeTo(0, fade); this.pauseTimer = setTimeout(() => { this.pauseTimer = null; this.el.pause(); }, fade * 1000 + 20); }
     else this.el.pause();
   }
 
   resume(fade = 0.05) {
-    if (this.gain) this.gain.gain.value = 0;
+    if (this.pauseTimer) { clearTimeout(this.pauseTimer); this.pauseTimer = null; this.fadeTo(this.level, fade); return; } // was fading out: fade back
+    if (!this.el.paused) return;       // already playing: leave it alone (no dip)
+    if (this.gain) { const t = sfx.ctx.currentTime; this.gain.gain.cancelScheduledValues(t); this.gain.gain.setValueAtTime(0, t); }
     this.el.play().then(() => this.fadeTo(this.level, fade)).catch(() => {});
   }
 

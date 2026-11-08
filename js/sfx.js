@@ -5,7 +5,7 @@ const NAMES = ['tap', 'type', 'star', 'bump', 'ring', 'paper', 'correct', 'wrong
 // relative mix after normalisation (1 = the common level)
 const VOLUME = { tap: 0.55, type: 0.3, star: 0.65, bump: 1, ring: 0.75, paper: 0.7, correct: 0.75, wrong: 0.55, stamp: 0.8, rustle: 0.7, open: 0.8, board: 0.7, place: 0.6 };
 const TARGET_RMS = 0.05;   // common level for every effect, kept well under the music
-const MASTER = 0.7;
+const MASTER = 0.8;
 // a few sounds get an extra-soft filter on top (the harsh ones)
 const EXTRA_SOFT = { wrong: 2000, stamp: 2400, type: 2800 };
 

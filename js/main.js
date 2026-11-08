@@ -33,8 +33,8 @@ window.addEventListener('keydown', () => sfx.ensure(), { once: true });
 let bgm = null;
 const music = {
   get paused() { return !bgm || bgm.paused; },
-  play() { if (!bgm || !soundOn) return Promise.resolve(); bgm.resume(0.8); return Promise.resolve(); },
-  pause() { bgm?.pause(0.3); },
+  play(fade = 2.5) { if (!bgm || !soundOn) return Promise.resolve(); bgm.resume(fade); return Promise.resolve(); },  // no-op if already playing
+  pause(fade = 0.6) { bgm?.pause(fade); },
   set muted(m) { bgm?.setMuted(m); },
 };
 let soundOn = true;
@@ -339,9 +339,13 @@ function countUp(el, target, then) {
 }
 
 let song = null; // the song of the open "guess the song" card
+let musicHeldBySong = false; // true only while a song card has paused the background music
 function stopClip() {
   if (song) { song.destroy(); song = null; }
-  if (S.music && soundOn) music.play().catch(() => {}); // background music comes back only after leaving the card
+  if (musicHeldBySong) {               // only song cards touch the music: bring it back with a slow fade
+    musicHeldBySong = false;
+    if (S.music && soundOn) setTimeout(() => music.play(2.5), 500);
+  }
 }
 
 function openSong(cp, i, done) {
@@ -391,7 +395,7 @@ function openSong(cp, i, done) {
   };
 
   if (hasAudio) {
-    music.pause();                                    // background music waits until she leaves this card
+    if (!music.paused) { music.pause(0.6); musicHeldBySong = true; } // background music waits until she leaves this card
     song = new SongPlayer(cp.audio); song.setMuted(!soundOn);
     const ready = Number.isFinite(Number(cp.start)) && cp.start !== '' && cp.start !== null
       ? Promise.resolve(Number(cp.start)) : detectStart(cp.audio);
