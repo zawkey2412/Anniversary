@@ -9,8 +9,9 @@ const FLY_SPEED = 4.3, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
 const SAFE_Z = 7, SAFE_XY = 1.5;
 const MAX_VX = 2.8, MAX_VY = 3.8;
-const STAR_REACH = 1.0, HEART_REACH = 1.2;                     // how close (sideways/up-down) she must be to catch
-const FLY_IN_TIME = 0.12;                                     // captured stars all reach the envelope together in this time                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
+const STAR_REACH = 1.15, HEART_REACH = 1.35;                   // how close (sideways/up-down) she must be at contact
+const CONTACT_DEPTH = 0.9, NUDGE_DEPTH = 2.4, NUDGE_EXTRA = 0.45; // contact window; last-moment sideways nudge
+const FLY_IN_TIME = 0.06;                                     // contact → centre of the envelope                                     // captured stars all reach the envelope together in this time                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -568,8 +569,7 @@ export class World {
     for (let tries = 0; tries < 8; tries++) {
       const pts = this.starPattern(zBase);
       if (pts.some(([x, y, z]) => this.crowded(x, y, z, ['cloud']))) continue; // never place stars next to a cloud
-      const group = (this.groupSeq = (this.groupSeq || 0) + 1);
-      for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; o.group = group; }
+      for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; }
       return true;
     }
     return false;
@@ -674,18 +674,19 @@ export class World {
       if (o.kind === 'cloud') o.mesh.material.rotation = Math.sin(this.time + o.x) * 0.04;
       if (!o.alive) continue;
       const z = o.mesh.position.z;
-      // capture: when a star comes within reach, every star the envelope can reach is caught in the same
-      // moment (incl. the rest of its group up ahead); they all fly in together and are counted at once
-      if (o.kind === 'star' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < STAR_REACH) {
-        const batch = this.objects.filter((s2) => s2.kind === 'star' && s2.alive && !s2.flying
-          && Math.hypot(s2.x - this.courierX, s2.y - this.courierY) < STAR_REACH
-          && s2.mesh.position.z < 1.2 && s2.mesh.position.z > (s2.group === o.group ? -10 : -3.2));
-        const id = (this.batchSeq = (this.batchSeq || 0) + 1);
-        this.batches = this.batches || {}; this.batches[id] = { left: batch.length, count: batch.length };
-        for (const s2 of batch) { s2.flying = true; s2.batch = id; s2.flyT = 0; s2.from = s2.mesh.position.clone(); s2.scale0 = s2.mesh.scale.x; }
-      }
-      if (o.kind === 'heart' && !o.flying && z > -3.2 && z < 1.2 && Math.hypot(o.x - this.courierX, o.y - this.courierY) < HEART_REACH) {
-        o.flying = true; o.flyT = 0; o.from = o.mesh.position.clone(); o.scale0 = o.mesh.scale.x;
+      // one-by-one catching: each star/heart is taken when IT reaches the envelope (contact), never earlier.
+      // Forgiving: a slightly-off star is nudged sideways into line just before contact (never pulled forward,
+      // so nothing piles up in front of the letter), and the reach at contact is a little wider.
+      if ((o.kind === 'star' || o.kind === 'heart') && !o.flying) {
+        const reach = o.kind === 'heart' ? HEART_REACH : STAR_REACH;
+        const off = Math.hypot(o.x - this.courierX, o.y - this.courierY);
+        if (z > -NUDGE_DEPTH && z < -CONTACT_DEPTH && off < reach + NUDGE_EXTRA) {
+          const m = 1 - Math.exp(-dt * 10);
+          o.x += (this.courierX - o.x) * m; o.y += (this.courierY - o.y) * m;
+          o.mesh.position.x = o.x; if (o.kind === 'star') o.mesh.position.y = LANE_BASE + o.y;
+        } else if (z >= -CONTACT_DEPTH && z < 1.4 && off < reach) {
+          o.flying = true; o.flyT = 0; o.from = o.mesh.position.clone(); o.scale0 = o.mesh.scale.x;
+        }
       }
       if (o.flying) {
         o.flyT += dt;
@@ -694,8 +695,8 @@ export class World {
         o.mesh.scale.setScalar(o.scale0 * (1 - 0.5 * e));
         if (k >= 1) {
           o.alive = false; this.lane.remove(o.mesh);
-          if (o.kind === 'heart') this.collectHeart(cpos);
-          else { const b = this.batches[o.batch]; if (--b.left === 0) { this.collectStars(b.count, cpos); delete this.batches[o.batch]; } }
+          if (o.kind === 'heart') this.collectHeart(cpos); else this.collectStar(cpos);
+          this.gulp = 1;
         }
         continue;
       }
@@ -726,8 +727,11 @@ export class World {
   collectStars(n, pos) {
     const before = this.combo;
     this.starsCollected += n; this.combo += n; this.bestCombo = Math.max(this.bestCombo, this.combo); this.lastStarAt = this.time;
-    this.sfx.play('star', { rate: 1 + Math.min(this.combo, 10) * 0.05, jitter: 0, vol: Math.min(1.4, 1 + (n - 1) * 0.1) });
-    this.burst(pos, '#ffe08a', Math.min(20, 6 + n * 2), 2.5 + Math.min(n, 5) * 0.2);
+    // each star in a run plays the next note of a pentatonic scale (resets after a short gap)
+    this.noteIdx = this.time - (this.lastNoteAt ?? -9) < 1.0 ? (this.noteIdx || 0) + 1 : 0; this.lastNoteAt = this.time;
+    const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+    this.sfx.play('star', { rate: Math.pow(2, SCALE[Math.min(this.noteIdx, SCALE.length - 1)] / 12), jitter: 0 });
+    this.burst(pos, '#ffe08a', 8, 2.5);
     const bonuses = Math.floor(this.combo / 10) - Math.floor(before / 10);   // every 10 in a row still pays +5
     if (bonuses > 0) {
       this.starsCollected += 5 * bonuses; this.sfx.play('correct');
@@ -805,6 +809,7 @@ export class World {
       // courier: banks into turns, spins when hit
       const cy = LANE_BASE + this.courierY + Math.sin(t * 3) * 0.04;
       this.courier.position.set(this.courierX, cy, 0);
+      this.gulp = Math.max(0, (this.gulp || 0) - dt * 9); this.envelope.scale.setScalar(1.25 * (1 + 0.08 * this.gulp));
       if (!this.paused) this.spin = Math.max(0, this.spin - dt * 1.8);
       const vx = THREE.MathUtils.clamp(this.courierVx || 0, -6, 6), vy = THREE.MathUtils.clamp(this.courierVy || 0, -6, 6);
       this.courier.rotation.set(-vy * 0.06, -vx * 0.05 + Math.sin(t * 1.5) * 0.12, -vx * 0.09 + (1 - this.spin) * 0 + this.spin * Math.PI * 2);
