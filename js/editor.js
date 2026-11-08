@@ -181,7 +181,11 @@ function renderCheckpoint(cp, i) {
     box.append(field('Question', cp, 'question'), field('Hint', cp, 'hint'), g, field('Shown after she guesses', cp, 'reveal', { textarea: true, rows: 2 }));
   } else {
     box.append(field(cp.type === 'song' ? 'Title' : 'Question', cp, 'question'), field('Hint', cp, 'hint'));
-    if (cp.type === 'song') box.append(mediaField('Song clip (optional, 10–20 s: the intro or chorus)', cp, 'audio', 'audio', () => cp.question));
+    if (cp.type === 'song') box.append(
+      mediaField('Song (upload the whole song: the game plays short clips from the start, then the full song once she answers)', cp, 'audio', 'audio', () => cp.question),
+      field('Start at (seconds, optional)', cp, 'start', { type: 'number', placeholder: 'auto: skips the silence at the beginning',
+        toText: (v) => (v === undefined || v === null || v === '' ? '' : v), fromText: (v) => (v.trim() === '' ? '' : Number(v)),
+        tip: 'Leave empty to start where the music begins. Put e.g. 42 to start the clips at the chorus.' }));
     const opts = document.createElement('div'); opts.innerHTML = '<label>Answer options (pick the correct one with the circle)</label>';
     cp.options ||= ['', '', '', ''];
     cp.options.forEach((o, k) => {

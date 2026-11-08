@@ -2,6 +2,7 @@ import { World } from './world.js';
 import { loadContent, isPreview } from './content.js';
 import { sfx } from './sfx.js';
 import { icon, hydrateIcons } from './icons.js';
+import { SongPlayer, detectStart, SNIPPET_STEPS } from './song.js';
 
 hydrateIcons();
 
@@ -19,7 +20,7 @@ document.title = `For ${S.herName}`;
 if (isPreview()) document.body.insertAdjacentHTML('beforeend', '<div class="preview-badge">PREVIEW · not published</div>');
 
 const world = new World($('#scene'), content);
-if (params.has('debug')) window.__world = world;
+if (params.has('debug')) { window.__world = world; window.__dbg = { get song() { return song; }, get music() { return music; } }; }
 await Promise.race([world.landReady, sleep(2500)]);
 $('#loading').classList.add('done');
 
@@ -37,7 +38,7 @@ function startMusic() {
 }
 $('#mute-btn').addEventListener('click', (e) => {
   e.stopPropagation();
-  soundOn = !soundOn; music.muted = !soundOn; sfx.muted = !soundOn;
+  soundOn = !soundOn; music.muted = !soundOn; sfx.muted = !soundOn; song?.setMuted(!soundOn);
   $('#mute-btn').innerHTML = icon(soundOn ? 'volume' : 'mute');
   if (soundOn) sfx.play('tap');
 });
@@ -243,7 +244,7 @@ function openCheckpoint(cp, i, done) {
 function openMemory(cp, i, done) {
   const city = cp.quoteBy === 'me' ? S.cityB : S.cityA;
   const pic = cp.image
-    ? `<img src="${esc(cp.image)}" alt="" />`
+    ? `<img src="${esc(cp.image)}" alt="" /><span class="zoom-badge">${icon('zoom')}</span>`
     : `${icon('image', { size: '34px', stroke: 1.5 })}<small>photo goes here</small>`;
   openModal(`
     <div class="postcard airmail">
@@ -256,8 +257,20 @@ function openMemory(cp, i, done) {
       ${continueBtn}
     </div>`);
   sfx.play('paper');
+  const picEl = card.querySelector('.polaroid .pic');
+  if (cp.image) { picEl.classList.add('zoomable'); picEl.onclick = () => openLightbox(cp.image, cp.caption || cp.title); }
   bindContinue(done);
 }
+
+// ---------- photo preview (lightbox) ----------
+const lb = $('#lightbox');
+function openLightbox(src, caption) {
+  $('#lb-img').src = src; $('#lb-cap').textContent = caption || '';
+  lb.classList.remove('hidden'); sfx.play('paper');
+}
+function closeLightbox() { if (!lb.classList.contains('hidden')) { lb.classList.add('hidden'); sfx.play('place'); } }
+lb.addEventListener('click', closeLightbox);
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
 
 function openNumber(cp, i, done) {
   openModal(`
@@ -316,12 +329,16 @@ function countUp(el, target, then) {
   })(start);
 }
 
-let clip = null;
-function stopClip() { if (clip) { clip.pause(); clip = null; } if (S.music && soundOn) music.play().catch(() => {}); }
+let song = null; // the song of the open "guess the song" card
+function stopClip() {
+  if (song) { song.destroy(); song = null; }
+  if (S.music && soundOn) music.play().catch(() => {}); // background music comes back only after leaving the card
+}
 
 function openSong(cp, i, done) {
   const opts = (cp.options || []).map((o, k) => `<button class="option" data-i="${k}">${esc(o || '…')}</button>`).join('');
-  const isSong = cp.type === 'song';
+  const isSong = cp.type === 'song', hasAudio = isSong && !!cp.audio;
+  const total = SNIPPET_STEPS[SNIPPET_STEPS.length - 1];
   openModal(`
     <div class="tape-card">
       <div class="pc-no">No. ${pad2(i + 1)} — ${isSong ? 'guess the song' : 'quick question'}</div>
@@ -331,24 +348,61 @@ function openSong(cp, i, done) {
         <div class="label"><span>mixtape for ${esc(S.herName)}</span></div>
         <div class="window"><div class="reel"></div><div class="reel"></div></div>
         <div class="bottom"></div>
-        ${cp.audio ? `<button class="play-btn" data-play aria-label="play">${icon('play')}</button>` : ''}
+        ${hasAudio ? `<button class="play-btn" data-play aria-label="play">${icon('play')}</button>` : ''}
+      </div>` : ''}
+      ${hasAudio ? `<div class="snippet" data-snippet>
+        <div class="snip-bar">${SNIPPET_STEPS.map((t, k) => `<span class="snip-seg" data-k="${k}" style="flex:${t - (SNIPPET_STEPS[k - 1] || 0)}"></span>`).join('')}<i class="snip-head"></i></div>
+        <div class="snip-row"><span class="snip-len" data-len>${SNIPPET_STEPS[0]}s</span>
+          <button class="snip-more" data-more>${icon('plus')} longer clip</button></div>
       </div>` : ''}
       <div class="options">${opts}</div>
       <div data-result></div>
     </div>`);
   sfx.play('paper');
+
+  let step = 0, answered = false, offset = 0;
   const play = card.querySelector('[data-play]'), cas = card.querySelector('[data-cassette]');
-  if (play) {
-    play.onclick = () => {
-      if (clip && !clip.paused) { clip.pause(); play.innerHTML = icon('play'); cas.classList.remove('playing'); return; }
-      if (S.music) music.pause();
-      clip = clip || new Audio(cp.audio); clip.muted = !soundOn;
-      clip.play().catch(() => {}); play.innerHTML = icon('pause'); cas.classList.add('playing');
-      clip.onended = () => { play.innerHTML = icon('play'); cas.classList.remove('playing'); };
+  const head = card.querySelector('.snip-head');
+  const setPlaying = (on) => { if (!play) return; play.innerHTML = icon(on ? 'pause' : 'play'); cas.classList.toggle('playing', on); };
+  const paintSteps = () => {
+    card.querySelectorAll('.snip-seg').forEach((el) => el.classList.toggle('open', Number(el.dataset.k) <= step));
+    const len = card.querySelector('[data-len]'); if (len) len.textContent = `${SNIPPET_STEPS[step]}s`;
+    const more = card.querySelector('[data-more]'); if (more) more.disabled = step >= SNIPPET_STEPS.length - 1;
+  };
+  let headRaf = 0;
+  const trackHead = () => {
+    cancelAnimationFrame(headRaf);
+    const loop = () => {
+      if (!song || !head) return;
+      const pos = Math.max(0, song.el.currentTime - offset);
+      head.style.left = `${Math.min(100, (pos / total) * 100)}%`;
+      if (song.playing) headRaf = requestAnimationFrame(loop);
     };
+    headRaf = requestAnimationFrame(loop);
+  };
+
+  if (hasAudio) {
+    music.pause();                                    // background music waits until she leaves this card
+    song = new SongPlayer(cp.audio); song.setMuted(!soundOn);
+    const ready = Number.isFinite(Number(cp.start)) && cp.start !== '' && cp.start !== null
+      ? Promise.resolve(Number(cp.start)) : detectStart(cp.audio);
+    ready.then((o) => { offset = o; });
+    const playSnippet = async () => {
+      sfx.ensure(); offset = await ready;
+      setPlaying(true); trackHead();
+      song.play(offset, SNIPPET_STEPS[step], () => setPlaying(false));
+    };
+    play.onclick = () => {
+      if (song.playing) { answered ? song.pause() : song.stop(0.08); setPlaying(false); return; }
+      if (answered) { song.resume(); setPlaying(true); trackHead(); } else playSnippet();
+    };
+    card.querySelector('[data-more]').onclick = () => { if (step < SNIPPET_STEPS.length - 1) { step++; paintSteps(); sfx.play('tap'); playSnippet(); } };
+    paintSteps();
   }
+
   card.querySelectorAll('.option').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
+      if (answered) return; answered = true;
       const k = Number(b.dataset.i), right = k === Number(cp.answer);
       card.querySelectorAll('.option').forEach((x) => { x.disabled = true; if (Number(x.dataset.i) === Number(cp.answer)) x.classList.add('correct'); });
       if (!right) b.classList.add('wrong');
@@ -358,6 +412,14 @@ function openSong(cp, i, done) {
         <p class="tq-text">${esc(cp.reveal || '')}</p>
         ${continueBtn}`;
       bindContinue(done).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (hasAudio) {
+        // reveal: the whole song plays (from the same start) until she taps "Keep going"
+        const snip = card.querySelector('[data-snippet]');
+        snip.classList.add('revealed'); snip.querySelector('.snip-row').innerHTML = `<span class="snip-now">${icon('music')} now playing</span>`;
+        card.querySelectorAll('.snip-seg').forEach((el) => el.classList.add('open'));
+        offset = await (Number.isFinite(Number(cp.start)) && cp.start !== '' && cp.start !== null ? Number(cp.start) : detectStart(cp.audio));
+        setTimeout(() => { if (!song) return; setPlaying(true); trackHead(); song.play(offset, null, () => setPlaying(false)); }, 700);
+      }
     };
   });
 }

@@ -358,3 +358,35 @@ button { font: inherit; }
   transition: transform .12s ease-out;
 }
 .stick.active .stick-knob { transition: none; }
+
+/* ---------- clickable photos + lightbox ---------- */
+.polaroid .pic { position: relative; }
+.polaroid .pic.zoomable { cursor: zoom-in; }
+.zoom-badge {
+  position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: rgba(31, 42, 74, .72); color: var(--paper); font-size: 15px; pointer-events: none; transition: transform .15s;
+}
+.polaroid .pic.zoomable:hover .zoom-badge { transform: scale(1.1); }
+.lightbox {
+  position: fixed; inset: 0; z-index: 12; background: rgba(5, 10, 26, .9); display: flex; align-items: center; justify-content: center;
+  padding: max(56px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); cursor: zoom-out; animation: fade-in .2s ease-out;
+}
+.lb-frame { background: #fff; padding: 12px 12px 46px; box-shadow: 0 30px 90px rgba(0, 0, 0, .7); position: relative; max-width: 100%; max-height: 100%; display: flex; flex-direction: column; animation: lb-pop .3s cubic-bezier(.2, 1.2, .4, 1) both; }
+.lb-frame img { display: block; max-width: min(92vw, 900px); max-height: calc(100vh - 170px); object-fit: contain; }
+.lb-frame figcaption { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 26px; color: #444; }
+.lb-close { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--paper); background: transparent; color: var(--paper); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes lb-pop { from { opacity: 0; transform: scale(.92) rotate(-2deg); } }
+
+/* ---------- song snippets ---------- */
+.snippet { margin: 12px 4px 4px; }
+.snip-bar { position: relative; display: flex; gap: 3px; height: 10px; }
+.snip-seg { background: #e4d9c1; border-radius: 3px; transition: background .25s; }
+.snip-seg.open { background: var(--red); }
+.snippet.revealed .snip-seg { background: var(--blue); }
+.snip-head { position: absolute; top: -3px; left: 0; width: 3px; height: 16px; background: var(--navy); border-radius: 2px; }
+.snip-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font: 13px var(--type); color: var(--ink-soft); }
+.snip-len { letter-spacing: 1px; }
+.snip-more { display: inline-flex; align-items: center; gap: 5px; border: 1.5px dashed var(--ink-soft); background: transparent; color: var(--ink); font: 13px var(--type); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+.snip-more:disabled { opacity: .4; cursor: default; }
+.snip-now { display: inline-flex; align-items: center; gap: 6px; color: var(--blue); }
