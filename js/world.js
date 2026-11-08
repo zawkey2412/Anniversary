@@ -7,7 +7,8 @@ const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
 const FLY_SPEED = 6.2, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
 const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
-const SAFE_Z = 4, SAFE_XY = 1.5;                              // stars and clouds keep this much space between them
+const SAFE_Z = 4, SAFE_XY = 1.5;
+const MAX_VX = 2.8, MAX_VY = 3.8;                             // full-stick speed: left/right, up/down                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -458,7 +459,7 @@ export class World {
         // desktop: the envelope follows the mouse
         this.target.x = ((e.clientX / w) * 2 - 1) * LANE_X * 1.25;
         this.target.y = LANE_MIN + (1 - (e.clientY - h * 0.25) / (h * 0.6)) * (LANE_MAX - LANE_MIN);
-        clampT(); this.emit('firstInput');
+        clampT(); this.lastMouseAt = this.time; this.emit('firstInput');
       }
       // touch input comes from the on-screen joystick (main.js sets this.stick)
     });
@@ -474,7 +475,7 @@ export class World {
     this.sfx.ensure();
     this.progress = 0; this.travel = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
-    this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.target.x = 0; this.target.y = 1.2;
+    this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.velX = 0; this.velY = 0; this.target.x = 0; this.target.y = 1.2;
     this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
     this.camFrom.pos.copy(this.camera.position); this.camFrom.look.copy(this.camLook);
     this.quatFrom = this.globe.quaternion.clone();
@@ -573,12 +574,24 @@ export class World {
     // keys and the joystick both act like a stick: -1..1 on each axis
     const kx = THREE.MathUtils.clamp((this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0) + this.stick.x, -1, 1);
     const ky = THREE.MathUtils.clamp((this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0) + this.stick.y, -1, 1);
-    if (kx || ky) {
-      this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 2.8 * dt, -LANE_X, LANE_X);
-      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 3.8 * dt, LANE_MIN, LANE_MAX);
+    let nx, ny;
+    const mouseMode = this.time - (this.lastMouseAt ?? -9) < 0.25 && !kx && !ky;
+    if (mouseMode) {
+      // desktop mouse: ease toward the pointer
+      const kx2 = 1 - Math.exp(-dt * 4.5), ky2 = 1 - Math.exp(-dt * 9);
+      nx = this.courierX + (this.target.x - this.courierX) * kx2; ny = this.courierY + (this.target.y - this.courierY) * ky2;
+      this.velX = 0; this.velY = 0;
+    } else {
+      // joystick / keys: the stick sets the speed directly, with a very short ramp (~0.15 s) so it never feels floaty
+      const r = 1 - Math.exp(-dt * 20);
+      this.velX = (this.velX || 0) + (kx * MAX_VX - (this.velX || 0)) * r;
+      this.velY = (this.velY || 0) + (ky * MAX_VY - (this.velY || 0)) * r;
+      nx = THREE.MathUtils.clamp(this.courierX + this.velX * dt, -LANE_X, LANE_X);
+      ny = THREE.MathUtils.clamp(this.courierY + this.velY * dt, LANE_MIN, LANE_MAX);
+      if (nx === -LANE_X || nx === LANE_X) this.velX = 0;
+      if (ny === LANE_MIN || ny === LANE_MAX) this.velY = 0;
+      this.target.x = nx; this.target.y = ny;
     }
-    const kx2 = 1 - Math.exp(-dt * 4.5), ky2 = 1 - Math.exp(-dt * 9); // left/right glides, up/down responds faster
-    const nx = this.courierX + (this.target.x - this.courierX) * kx2, ny = this.courierY + (this.target.y - this.courierY) * ky2;
     this.courierVx = (nx - this.courierX) / Math.max(dt, 1e-3); this.courierVy = (ny - this.courierY) / Math.max(dt, 1e-3);
     this.courierX = nx; this.courierY = ny;
     this.hitTimer = Math.max(0, this.hitTimer - dt); this.invuln = Math.max(0, this.invuln - dt);
