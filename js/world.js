@@ -4,7 +4,7 @@ import { sfx } from './sfx.js';
 import { ICONS } from './icons.js';
 
 const R = 10;                // globe radius
-const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15;
+const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -115,6 +115,48 @@ function airmailStripes() {
   const g = c.getContext('2d'); const cols = ['#c8352e', '#fbf6ea', '#1f4ea3', '#fbf6ea'];
   for (let i = -2; i < 12; i++) { g.fillStyle = cols[((i % 4) + 4) % 4]; g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32 + 32, 0); g.lineTo(i * 32 + 16, 32); g.lineTo(i * 32 - 16, 32); g.closePath(); g.fill(); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 1); return t;
+}
+
+// Soft painted cloud for sprites. storm = darker obstacle cloud, otherwise a pale background cloud.
+function cloudTexture(seed, storm) {
+  const c = document.createElement('canvas'); c.width = 384; c.height = 224;
+  const g = c.getContext('2d');
+  let s = seed * 9301 + 49297; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  const puffs = [];
+  for (let i = 0; i < 11; i++) {
+    const t = i / 10, r = 34 + rnd() * 30 + Math.sin(t * Math.PI) * 30;
+    puffs.push([60 + t * 264 + (rnd() - 0.5) * 20, 150 - Math.sin(t * Math.PI) * 48 - rnd() * 22, r]);
+  }
+  for (let i = 0; i < 4; i++) puffs.push([110 + rnd() * 160, 100 + rnd() * 20, 40 + rnd() * 26]);
+  for (const [x, y, r] of puffs) {
+    const grd = g.createRadialGradient(x, y - r * 0.2, r * 0.1, x, y, r);
+    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.65, 'rgba(255,255,255,0.92)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  // flat-ish bottom
+  g.globalCompositeOperation = 'destination-out';
+  const cut = g.createLinearGradient(0, 168, 0, 200); cut.addColorStop(0, 'rgba(0,0,0,0)'); cut.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = cut; g.fillRect(0, 160, 384, 64);
+  // shading: light top, tinted underside
+  g.globalCompositeOperation = 'source-atop';
+  const sh = g.createLinearGradient(0, 40, 0, 190);
+  if (storm) { sh.addColorStop(0, '#e9e6f4'); sh.addColorStop(0.55, '#a7aacb'); sh.addColorStop(1, '#5d6390'); }
+  else { sh.addColorStop(0, '#ffffff'); sh.addColorStop(0.6, '#f1ecfa'); sh.addColorStop(1, '#c9c9e4'); }
+  g.fillStyle = sh; g.fillRect(0, 0, 384, 224);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+function heartGeometry() {
+  const h = new THREE.Shape();
+  h.moveTo(0, -0.35);
+  h.bezierCurveTo(-0.05, -0.3, -0.42, -0.05, -0.42, 0.14);
+  h.bezierCurveTo(-0.42, 0.32, -0.28, 0.42, -0.16, 0.42);
+  h.bezierCurveTo(-0.06, 0.42, 0, 0.35, 0, 0.28);
+  h.bezierCurveTo(0, 0.35, 0.06, 0.42, 0.16, 0.42);
+  h.bezierCurveTo(0.28, 0.42, 0.42, 0.32, 0.42, 0.14);
+  h.bezierCurveTo(0.42, -0.05, 0.05, -0.3, 0, -0.35);
+  const geo = new THREE.ExtrudeGeometry(h, { depth: 0.12, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 3 });
+  geo.center(); return geo;
 }
 
 function starGeometry() {
@@ -321,10 +363,11 @@ export class World {
   }
 
   buildPools() {
-    this.geo = { star: starGeometry(), puff: new THREE.SphereGeometry(1, 16, 12), ring: new THREE.TorusGeometry(2.1, 0.11, 12, 96) };
+    this.geo = { star: starGeometry(), heart: heartGeometry(), ring: new THREE.TorusGeometry(2.1, 0.11, 12, 96) };
+    this.cloudTex = { storm: [1, 2, 3].map((k) => cloudTexture(k, true)), soft: [4, 5, 6].map((k) => cloudTexture(k, false)) };
     this.mat = {
       star: new THREE.MeshStandardMaterial({ color: '#ffe08a', emissive: '#e9a23b', emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.4 }),
-      cloud: new THREE.MeshStandardMaterial({ color: '#e7e3f2', emissive: '#28345e', emissiveIntensity: 0.45, roughness: 1, transparent: true, opacity: 0.93 }),
+      heart: new THREE.MeshStandardMaterial({ color: '#ff6f86', emissive: '#e0405c', emissiveIntensity: 0.9, roughness: 0.3, metalness: 0.2 }),
       ring: new THREE.MeshBasicMaterial({ map: airmailStripes(), fog: false }),
     };
     this.lane = new THREE.Group(); this.scene.add(this.lane);
@@ -334,16 +377,37 @@ export class World {
     const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.dust = new THREE.Points(dg, new THREE.PointsMaterial({ size: 0.08, map: this.tex.glow, color: '#fff1d6', transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }));
     this.dust.visible = false; this.scene.add(this.dust);
+    // sparkle bursts + lost stars
+    this.bursts = [];
+    for (let i = 0; i < 60; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+      sp.visible = false; this.scene.add(sp); this.bursts.push({ sp, life: 0, v: new THREE.Vector3() });
+    }
+    this.burstIdx = 0;
+    this.lost = [];
+    for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(this.geo.star, this.mat.star); m.visible = false; this.scene.add(m); this.lost.push({ m, life: 0, v: new THREE.Vector3() }); }
   }
 
-  makeCloud() {
-    const g = new THREE.Group(); const k = 4 + ((Math.random() * 3) | 0);
-    for (let i = 0; i < k; i++) {
-      const m = new THREE.Mesh(this.geo.puff, this.mat.cloud);
-      const s = 0.32 + Math.random() * 0.28; m.scale.setScalar(s);
-      m.position.set((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.5); g.add(m);
+  burst(pos, color = '#ffe08a', n = 10, speed = 3) {
+    for (let i = 0; i < n; i++) {
+      const b = this.bursts[this.burstIdx++ % this.bursts.length];
+      b.sp.visible = true; b.life = 1; b.sp.position.copy(pos); b.sp.material.color.set(color);
+      b.v.set(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(speed * (0.5 + Math.random()));
     }
-    return g;
+  }
+
+  // screen position of the courier (for floating texts in the DOM)
+  courierScreen() {
+    const v = this.courier.position.clone().project(this.camera);
+    return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+  }
+
+  makeCloud(storm) {
+    const list = storm ? this.cloudTex.storm : this.cloudTex.soft;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: list[(Math.random() * list.length) | 0], transparent: true, depthWrite: false, opacity: storm ? 0.97 : 0.4 }));
+    const w = storm ? 1.9 + Math.random() * 0.4 : 4 + Math.random() * 3;
+    sp.scale.set(w, w * 0.58, 1);
+    return sp;
   }
 
   // ---------- path math ----------
@@ -374,18 +438,36 @@ export class World {
 
   // ---------- input ----------
   bindInput() {
-    const down = (e) => {
-      if (this.mode !== 'game' || this.paused) return;
-      if (e.target.closest && e.target.closest('button, input, .modal, a')) return;
-      this.holding = true; this.emit('firstInput');
+    this.target = { x: 0, y: 1.2 }; this.keys = new Set(); this.dragging = false; this.last = null;
+    const blocked = (e) => this.mode !== 'game' || this.paused || (e.target.closest && e.target.closest('button, input, .modal, a'));
+    const clampT = () => {
+      this.target.x = THREE.MathUtils.clamp(this.target.x, -LANE_X, LANE_X);
+      this.target.y = THREE.MathUtils.clamp(this.target.y, LANE_MIN, LANE_MAX);
     };
-    const up = () => { this.holding = false; };
-    window.addEventListener('pointerdown', down);
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
-    window.addEventListener('blur', up);
-    window.addEventListener('keydown', (e) => { if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && this.mode === 'game' && !this.paused) { this.holding = true; this.emit('firstInput'); e.preventDefault(); } });
-    window.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') this.holding = false; });
+    window.addEventListener('pointerdown', (e) => {
+      if (blocked(e)) return;
+      this.dragging = true; this.last = { x: e.clientX, y: e.clientY }; this.emit('firstInput');
+    });
+    window.addEventListener('pointermove', (e) => {
+      if (this.mode !== 'game' || this.paused) return;
+      const w = window.innerWidth, h = window.innerHeight;
+      if (e.pointerType === 'mouse') {
+        // desktop: the envelope follows the mouse
+        this.target.x = ((e.clientX / w) * 2 - 1) * LANE_X * 1.25;
+        this.target.y = LANE_MIN + (1 - (e.clientY - h * 0.25) / (h * 0.6)) * (LANE_MAX - LANE_MIN);
+        clampT(); this.emit('firstInput');
+      } else if (this.dragging && this.last) {
+        // touch: relative drag, so the finger never covers the envelope
+        this.target.x += ((e.clientX - this.last.x) / w) * LANE_X * 2 * 1.5;
+        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 2.6;
+        this.last = { x: e.clientX, y: e.clientY }; clampT();
+      }
+    });
+    const up = () => { this.dragging = false; this.last = null; };
+    window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up); window.addEventListener('blur', () => { up(); this.keys.clear(); });
+    const KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'];
+    window.addEventListener('keydown', (e) => { if (KEYS.includes(e.code) && this.mode === 'game' && !this.paused) { this.keys.add(e.code); this.emit('firstInput'); e.preventDefault(); } });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
   }
 
   // ---------- modes ----------
@@ -393,14 +475,15 @@ export class World {
     this.sfx.ensure();
     this.progress = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
-    this.courierY = 1.2; this.courierVy = 0; this.spawnClock = 0; this.starClock = 0.8; this.quietUntil = 0;
+    this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.target.x = 0; this.target.y = 1.2;
+    this.spawnClock = 0.6; this.starClock = 0.8; this.heartClock = 9; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
     this.camFrom.pos.copy(this.camera.position); this.camFrom.look.copy(this.camLook);
     this.quatFrom = this.globe.quaternion.clone();
     this.transition = 0; this.mode = 'toGame'; this.paused = false;
     this.arc.geometry.setDrawRange(0, 0);
   }
 
-  pause(v) { this.paused = v; if (v) this.holding = false; }
+  pause(v) { this.paused = v; if (v) { this.dragging = false; this.keys?.clear(); } }
 
   toFinale() {
     this.mode = 'toFinale'; this.transition = 0;
@@ -422,77 +505,105 @@ export class World {
   overviewMoon() { return this.portrait ? new THREE.Vector3(9, -15, -12) : new THREE.Vector3(22, 3, -24); }
 
   // ---------- game update ----------
-  spawn(kind, y, extra = {}) {
+  spawn(kind, x, y, extra = {}) {
     let mesh;
-    if (kind === 'star') { mesh = new THREE.Mesh(this.geo.star, this.mat.star); mesh.scale.setScalar(0.9); }
-    else if (kind === 'cloud') mesh = this.makeCloud();
+    if (kind === 'star') {
+      mesh = new THREE.Mesh(this.geo.star, this.mat.star); mesh.scale.setScalar(1.15);
+      const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })); gl.scale.set(1.1, 1.1, 1); mesh.add(gl);
+    } else if (kind === 'heart') {
+      mesh = new THREE.Mesh(this.geo.heart, this.mat.heart); mesh.scale.setScalar(1.3);
+      const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, color: '#ff9fb2', transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })); gl.scale.set(2.2, 2.2, 1); mesh.add(gl);
+    } else if (kind === 'cloud') mesh = this.makeCloud(true);
+    else if (kind === 'deco') mesh = this.makeCloud(false);
     else if (kind === 'ring') {
       mesh = new THREE.Group();
       mesh.add(new THREE.Mesh(this.geo.ring, this.mat.ring));
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(6, 6, 1); mesh.add(glow);
       const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTexture(extra.icon), transparent: true, depthWrite: false })); icon.scale.set(1.2, 1.2, 1); mesh.add(icon);
-    } else if (kind === 'deco') { mesh = this.makeCloud(); mesh.scale.setScalar(1.6 + Math.random()); }
-    const x = kind === 'deco' ? (Math.random() < 0.5 ? -1 : 1) * (3.5 + Math.random() * 5) : 0;
+    }
     mesh.position.set(x, LANE_BASE + y, SPAWN_Z);
     this.lane.add(mesh);
-    const o = { kind, y, mesh, alive: true, ...extra };
+    const o = { kind, x, y, mesh, alive: true, ...extra };
     this.objects.push(o); return o;
   }
 
+  spawnStars() {
+    const rx = () => (Math.random() * 2 - 1) * (LANE_X - 0.3), ry = () => 0.3 + Math.random() * (LANE_MAX - 0.6);
+    const pattern = Math.random(), pts = [];
+    if (pattern < 0.3) { const x = rx(), y = ry(); for (let i = 0; i < 5; i++) pts.push([x, y, i]); }                         // straight line
+    else if (pattern < 0.55) { const y = ry(); for (let i = 0; i < 6; i++) pts.push([-LANE_X + 0.4 + i * ((LANE_X * 2 - 0.8) / 5), y, i]); } // sweep across
+    else if (pattern < 0.8) { const x = rx(); for (let i = 0; i < 6; i++) pts.push([x, 0.25 + Math.sin(i / 5 * Math.PI) * (LANE_MAX - 0.5), i]); } // arc
+    else { const x = THREE.MathUtils.clamp(rx(), -1.4, 1.4), y = THREE.MathUtils.clamp(ry(), 0.9, LANE_MAX - 0.9); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pts.push([x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, 0]); } } // ring
+    for (const [x, y, k] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z -= k * 1.4; }
+  }
+
   updateGame(dt) {
-    const speedFactor = this.hitTimer > 0 ? 0.45 : 1;
+    const speedFactor = this.hitTimer > 0 ? 0.55 : 1;
     const flightSeconds = Math.max(105, this.content.checkpoints.length * 8);
     this.progress = Math.min(1, this.progress + (dt * speedFactor) / flightSeconds);
-    const v = 9 * speedFactor;
+    const v = 10 * speedFactor;
 
-    // courier physics
-    const lift = this.holding ? 9.5 : -7.5;
-    this.courierVy = THREE.MathUtils.clamp(this.courierVy + lift * dt, -3.6, 3.6);
-    this.courierY += this.courierVy * dt;
-    if (this.courierY < LANE_MIN) { this.courierY = LANE_MIN; this.courierVy = 0; }
-    if (this.courierY > LANE_MAX) { this.courierY = LANE_MAX; this.courierVy = 0; }
-    this.hitTimer = Math.max(0, this.hitTimer - dt);
+    // steering: keys nudge the target, the envelope eases toward it
+    const kx = (this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0);
+    const ky = (this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0);
+    if (kx || ky) {
+      this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 4.5 * dt, -LANE_X, LANE_X);
+      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 4 * dt, LANE_MIN, LANE_MAX);
+    }
+    const k = 1 - Math.exp(-dt * 11);
+    const nx = this.courierX + (this.target.x - this.courierX) * k, ny = this.courierY + (this.target.y - this.courierY) * k;
+    this.courierVx = (nx - this.courierX) / Math.max(dt, 1e-3); this.courierVy = (ny - this.courierY) / Math.max(dt, 1e-3);
+    this.courierX = nx; this.courierY = ny;
+    this.hitTimer = Math.max(0, this.hitTimer - dt); this.invuln = Math.max(0, this.invuln - dt);
+    if (this.combo && this.time - this.lastStarAt > 2.2) this.combo = 0;
 
     // checkpoints
     const cps = this.content.checkpoints;
     const quietZone = this.nextCheckpoint < cps.length && this.progress > this.cpAt(this.nextCheckpoint) - 0.025;
     if (this.nextCheckpoint < cps.length && this.progress >= this.cpAt(this.nextCheckpoint) && !this.objects.some((o) => o.kind === 'ring')) {
       const cp = cps[this.nextCheckpoint];
-      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
+      this.spawn('ring', 0, 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
       this.nextCheckpoint++;
     }
 
     // spawning
-    this.spawnClock -= dt * speedFactor; this.starClock -= dt * speedFactor;
+    this.spawnClock -= dt * speedFactor; this.starClock -= dt * speedFactor; this.heartClock -= dt * speedFactor;
     const arriving = this.progress > 0.965;
     if (!quietZone && !arriving && this.spawnClock <= 0) {
-      this.spawnClock = 0.9 + Math.random() * 0.7;
-      this.spawn('cloud', LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4));
-      if (Math.random() < 0.6) this.spawn('deco', Math.random() * 4 - 0.5);
+      this.spawnClock = 0.7 + Math.random() * 0.6;
+      const n = Math.random() < 0.3 ? 2 : 1;
+      for (let i = 0; i < n; i++) this.spawn('cloud', (Math.random() * 2 - 1) * LANE_X, LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4));
+      if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!arriving && this.starClock <= 0) {
-      this.starClock = 1.5 + Math.random() * 0.8;
-      const base = 0.3 + Math.random() * (LANE_MAX - 0.6), pattern = Math.random();
-      const count = pattern < 0.5 ? 3 : 5;
-      for (let i = 0; i < count; i++) {
-        const y = pattern < 0.5 ? base : THREE.MathUtils.clamp(base + Math.sin(i / (count - 1) * Math.PI) * 0.9 - 0.3, 0.1, LANE_MAX - 0.1);
-        const o = this.spawn('star', y); o.mesh.position.z -= i * 1.3;
-      }
+    if (!arriving && this.starClock <= 0) { this.starClock = 1.6 + Math.random() * 0.8; this.spawnStars(); }
+    if (!quietZone && !arriving && this.heartClock <= 0) {
+      this.heartClock = 13 + Math.random() * 8;
+      this.spawn('heart', (Math.random() * 2 - 1) * (LANE_X - 0.4), 0.4 + Math.random() * (LANE_MAX - 0.8));
     }
 
-    // move objects
+    // move + collide
+    const cpos = new THREE.Vector3(this.courierX, LANE_BASE + this.courierY, 0);
     for (const o of this.objects) {
       o.mesh.position.z += v * dt;
-      if (o.kind === 'star') { o.mesh.rotation.y += dt * 3; }
-      if (o.kind === 'ring') { o.mesh.children[0].rotation.z += dt; }
-      if (o.kind === 'cloud' || o.kind === 'deco') o.mesh.rotation.y += dt * 0.2;
+      if (o.kind === 'star') o.mesh.rotation.y += dt * 3;
+      if (o.kind === 'heart') { o.mesh.rotation.y += dt * 2.2; o.mesh.position.y = LANE_BASE + o.y + Math.sin(this.time * 4) * 0.08; }
+      if (o.kind === 'ring') o.mesh.children[0].rotation.z += dt;
+      if (o.kind === 'cloud') o.mesh.material.rotation = Math.sin(this.time + o.x) * 0.04;
       if (!o.alive) continue;
-      const dz = Math.abs(o.mesh.position.z), dy = Math.abs(o.y - this.courierY);
-      if (o.kind === 'star' && dz < 0.45 && dy < 0.5) {
-        o.alive = false; this.lane.remove(o.mesh); this.starsCollected++; this.combo = this.time - this.lastStarAt < 0.9 ? this.combo + 1 : 0; this.lastStarAt = this.time; this.sfx.play('star', { rate: 1 + Math.min(this.combo, 8) * 0.06, jitter: 0 }); this.emit('stars', this.starsCollected);
-      } else if (o.kind === 'cloud' && dz < 0.5 && dy < 0.5 && this.hitTimer <= 0) {
-        o.alive = false; this.hitTimer = 1.1; this.sfx.play('bump'); this.courierVy = -1.5; this.emit('bump');
-      } else if (o.kind === 'ring' && o.mesh.position.z > -0.1) {
+      const z = o.mesh.position.z;
+      // magnet: nearby stars and hearts drift into the envelope
+      if ((o.kind === 'star' || o.kind === 'heart') && z > -5 && z < 1) {
+        const d = Math.hypot(o.x - this.courierX, o.y - this.courierY);
+        if (d < 1.05) { const m = 1 - Math.exp(-dt * 8); o.x += (this.courierX - o.x) * m; o.y += (this.courierY - o.y) * m; o.mesh.position.x = o.x; if (o.kind === 'star') o.mesh.position.y = LANE_BASE + o.y; }
+      }
+      const dz = Math.abs(z), d2 = Math.hypot(o.x - this.courierX, o.y - this.courierY);
+      if (o.kind === 'star' && dz < 0.7 && d2 < 0.65) {
+        o.alive = false; this.lane.remove(o.mesh); this.collectStar(cpos);
+      } else if (o.kind === 'heart' && dz < 0.8 && d2 < 0.9) {
+        o.alive = false; this.lane.remove(o.mesh); this.collectHeart(cpos);
+      } else if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
+        o.alive = false; this.hitCloud(cpos);
+      } else if (o.kind === 'ring' && z > -0.1) {
         o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.emit('checkpoint', o.index);
       }
     }
@@ -509,6 +620,40 @@ export class World {
     if (this.progress >= 1 && this.nextCheckpoint >= cps.length && !this.objects.some((o) => o.kind === 'ring')) {
       this.mode = 'arrived'; this.emit('arrived');
     }
+  }
+
+  collectStar(pos) {
+    this.starsCollected++; this.combo++; this.bestCombo = Math.max(this.bestCombo, this.combo); this.lastStarAt = this.time;
+    this.sfx.play('star', { rate: 1 + Math.min(this.combo, 10) * 0.05, jitter: 0 });
+    this.burst(pos, '#ffe08a', 8, 2.5);
+    if (this.combo % 10 === 0) {
+      this.starsCollected += 5; this.sfx.play('correct');
+      this.burst(pos, '#ffd36b', 22, 4.5);
+      this.emit('float', { text: `${this.combo} combo! +5`, kind: 'combo' });
+    } else this.emit('float', { text: '+1', kind: 'star' });
+    this.emit('stars', this.starsCollected);
+  }
+
+  collectHeart(pos) {
+    this.starsCollected += 5; this.sfx.play('correct'); this.sfx.play('star', { rate: 1.5, jitter: 0 });
+    this.burst(pos, '#ff8fa6', 26, 5);
+    const words = ['Seni seviyorum', 'Aku cinta kamu', 'I love you'];
+    this.emit('float', { text: `${words[(Math.random() * words.length) | 0]} +5`, kind: 'heart' });
+    this.emit('stars', this.starsCollected);
+  }
+
+  hitCloud(pos) {
+    const lost = Math.min(3, this.starsCollected);
+    this.starsCollected -= lost; this.hits++; this.combo = 0;
+    this.hitTimer = 0.9; this.invuln = 1.4; this.spin = 1;
+    this.sfx.play('bump');
+    for (let i = 0; i < lost; i++) {
+      const l = this.lost[i]; l.m.visible = true; l.life = 1; l.m.position.copy(pos);
+      l.v.set((i - 1) * 1.6 + (Math.random() - 0.5), 2.5 + Math.random(), 2 + Math.random() * 2);
+    }
+    this.burst(pos, '#c9cde8', 14, 3);
+    this.emit('float', { text: lost ? `-${lost}` : 'oof', kind: 'hit' });
+    this.emit('stars', this.starsCollected); this.emit('bump');
   }
 
   cpAt(i) { const n = this.content.checkpoints.length; return 0.04 + (i + 0.5) * (0.9 / n); }
@@ -551,20 +696,23 @@ export class World {
       this.globe.quaternion.copy(this.orientGame(this.progress));
       this.setArcProgress(this.progress);
       camPos = gc.pos.clone(); camLook = gc.look.clone();
+      camPos.x += this.courierX * 0.5; camLook.x += this.courierX * 0.65;
       camPos.y += (this.courierY - 1.2) * 0.35; camLook.y += (this.courierY - 1.2) * 0.25;
-      if (this.hitTimer > 0) camPos.x += Math.sin(t * 60) * 0.06 * this.hitTimer;
+      if (this.hitTimer > 0) { camPos.x += Math.sin(t * 55) * 0.09 * this.hitTimer; camPos.y += Math.cos(t * 47) * 0.06 * this.hitTimer; }
       this.moon.position.set(7, LANE_BASE + 13, -70);
-      // courier
-      const cy = LANE_BASE + this.courierY + Math.sin(t * 3) * 0.05;
-      this.courier.position.set(0, cy, 0);
-      this.courier.rotation.set(-this.courierVy * 0.12, Math.sin(t * 1.5) * 0.25, Math.sin(t * 2) * 0.08);
-      this.envelope.visible = !(this.hitTimer > 0 && Math.sin(t * 40) > 0.3);
+      // courier: banks into turns, spins when hit
+      const cy = LANE_BASE + this.courierY + Math.sin(t * 3) * 0.04;
+      this.courier.position.set(this.courierX, cy, 0);
+      if (!this.paused) this.spin = Math.max(0, this.spin - dt * 1.8);
+      const vx = THREE.MathUtils.clamp(this.courierVx || 0, -6, 6), vy = THREE.MathUtils.clamp(this.courierVy || 0, -6, 6);
+      this.courier.rotation.set(-vy * 0.06, -vx * 0.05 + Math.sin(t * 1.5) * 0.12, -vx * 0.09 + (1 - this.spin) * 0 + this.spin * Math.PI * 2);
+      this.envelope.visible = !(this.invuln > 0 && Math.sin(t * 30) > 0.4);
       this.courierGlow.material.opacity = 0.45 + Math.sin(t * 4) * 0.12;
       // trail
       this.trailTimer -= dt;
       if (!this.paused && this.trailTimer <= 0) {
         this.trailTimer = 0.03; const p = this.trail[this.trailIdx++ % this.trail.length];
-        p.s.visible = true; p.life = 1; p.s.position.set((Math.random() - 0.5) * 0.15, cy + (Math.random() - 0.5) * 0.15, 0.2);
+        p.s.visible = true; p.life = 1; p.s.position.set(this.courierX + (Math.random() - 0.5) * 0.15, cy + (Math.random() - 0.5) * 0.15, 0.2);
       }
       for (const p of this.trail) {
         if (!p.s.visible) continue;
@@ -586,6 +734,19 @@ export class World {
       this.arc.material.opacity = 0.75 + Math.sin(t * 2) * 0.25;
       this.moon.position.lerp(this.overviewMoon(), 0.03);
       this.trail.forEach((p) => (p.s.visible = false));
+    }
+
+    // sparkle bursts + lost stars (always animate so they finish even when paused)
+    for (const b of this.bursts) {
+      if (!b.sp.visible) continue;
+      b.life -= dt * 1.8; b.sp.position.addScaledVector(b.v, dt); b.v.multiplyScalar(1 - dt * 2.5);
+      b.sp.material.opacity = Math.max(0, b.life); const sc = 0.12 + b.life * 0.3; b.sp.scale.set(sc, sc, 1);
+      if (b.life <= 0) b.sp.visible = false;
+    }
+    for (const l of this.lost) {
+      if (!l.m.visible) continue;
+      l.life -= dt * 0.9; l.v.y -= 9 * dt; l.m.position.addScaledVector(l.v, dt); l.m.rotation.x += dt * 8; l.m.rotation.y += dt * 5;
+      if (l.life <= 0) l.m.visible = false;
     }
 
     const showLabels = this.mode === 'idle' || this.mode === 'finale' || this.mode === 'toFinale';

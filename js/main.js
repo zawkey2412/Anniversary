@@ -19,6 +19,7 @@ document.title = `For ${S.herName}`;
 if (isPreview()) document.body.insertAdjacentHTML('beforeend', '<div class="preview-badge">PREVIEW · not published</div>');
 
 const world = new World($('#scene'), content);
+if (params.has('debug')) window.__world = world;
 await Promise.race([world.landReady, sleep(2500)]);
 $('#loading').classList.add('done');
 
@@ -146,7 +147,26 @@ function beginGame() {
   $('#hud-stars').textContent = '0';
   world.startGame();
 }
-world.on('gameStarted', () => { $('#hud').classList.remove('hidden'); $('#touch-hint').classList.remove('hidden'); });
+world.on('gameStarted', () => {
+  $('#hud').classList.remove('hidden');
+  $('#touch-hint-text').textContent = matchMedia('(pointer: fine)').matches ? 'move your mouse (or arrow keys)' : 'drag anywhere to steer';
+  $('#touch-hint').classList.remove('hidden');
+});
+
+// floating "+1", combo and "-3" texts above the envelope
+world.on('float', ({ text, kind }) => {
+  const { x, y } = world.courierScreen();
+  const el = document.createElement('div');
+  el.className = `floater ${kind}`;
+  el.style.left = `${x + (Math.random() - 0.5) * 30}px`; el.style.top = `${y - 40}px`;
+  el.innerHTML = kind === 'heart' ? `${icon('heart')} ${esc(text)}` : esc(text);
+  $('#floaters').appendChild(el);
+  setTimeout(() => el.remove(), kind === 'star' ? 700 : 1500);
+});
+world.on('bump', () => {
+  const f = $('#hit-flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  const st = document.querySelector('.hud-stamp'); st.classList.remove('lose'); void st.offsetWidth; st.classList.add('lose');
+});
 world.on('firstInput', () => $('#touch-hint').classList.add('hidden'));
 world.on('stars', (n) => { $('#hud-stars').textContent = String(n); });
 
@@ -341,6 +361,11 @@ function videoHTML(src) {
 function showFinale() {
   const f = content.finale;
   $('#delivered-stamp').textContent = f.delivered;
+  const hits = world.hits || 0, played = world.mode !== 'finale' || world.starsCollected > 0 || hits > 0;
+  const [grade, gcolor] = hits <= 1 ? ['First class', 'blue'] : hits <= 4 ? ['Express', 'blue'] : hits <= 8 ? ['Priority', 'blue'] : ['A bit soggy', 'red'];
+  $('#grade-row').innerHTML = played
+    ? `<div class="rubber-stamp ${gcolor} grade">${grade}</div><p class="grade-stats">${icon('star')} ${world.starsCollected} caught · ${icon('cloud')} ${hits} cloud${hits === 1 ? '' : 's'} · best combo ${world.bestCombo || 0}</p>`
+    : '';
   $('#finale-line').textContent = f.line.replace('9,571', fmt(world.distanceKm));
   $('#clocks').innerHTML = clockHTML();
   $('#letter-title').textContent = f.letterTitle;

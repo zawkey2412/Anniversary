@@ -90,7 +90,9 @@
       <div class="stamp hud-stamp"><span class="hud-stars"><i data-icon="star"></i><b id="hud-stars">0</b></span></div>
     </div>
   </div>
-  <div id="touch-hint" class="touch-hint hidden"><i data-icon="up"></i> hold to rise</div>
+  <div id="touch-hint" class="touch-hint hidden"><i data-icon="move"></i> <span id="touch-hint-text">drag to steer</span></div>
+  <div id="floaters" class="floaters"></div>
+  <div id="hit-flash" class="hit-flash"></div>
 
   <!-- Checkpoint modal -->
   <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -101,6 +103,7 @@
   <section id="finale" class="screen">
     <div class="finale-inner">
       <div id="delivered-stamp" class="rubber-stamp blue big"></div>
+      <div id="grade-row" class="grade-row"></div>
       <p id="finale-line" class="finale-line"></p>
       <div id="clocks" class="clocks"></div>
 

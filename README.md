@@ -1,6 +1,6 @@
 # ✉ Moonlight Courier: a first-anniversary gift
 
-A small 3D browser game for Ay Yüzlüm. She carries a glowing 💜 message 9,571 km from Istanbul to Bandung under the moon. Along the way she collects stars, avoids clouds, and flies through rings that open memories, *guess the number* questions and *guess the song* questions. When she lands, the letter and the video appear.
+A small 3D browser game for Ay Yüzlüm. She steers an airmail envelope 9,571 km from Istanbul to Bandung under the moon (drag on phones, mouse or arrow keys on desktop). Stars and golden hearts add to her count, grey clouds knock 3 stars loose, and the finale gives a delivery grade. Along the way she and flies through rings that open memories, *guess the number* questions and *guess the song* questions. When she lands, the letter and the video appear.
 
 Plain HTML, CSS and JS with Three.js included in the repo. There is no build step, so it runs as is on GitHub Pages.
 
