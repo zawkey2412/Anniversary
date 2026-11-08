@@ -1,6 +1,7 @@
 // The 3D world: dotted globe, moon, stars, the courier game and the finale view.
 import * as THREE from 'three';
 import { sfx } from './sfx.js';
+import { ICONS } from './icons.js';
 
 const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15;
@@ -65,10 +66,24 @@ function textSprite(lines, { color = '#fbf6ea', sub = '#f3d9a4', scale = 1 } = {
   return sprite;
 }
 
-function emojiTexture(emoji) {
+// Draw a Lucide icon (from icons.js) onto a canvas: flat cream badge with a navy line icon.
+function iconTexture(name) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d'); g.font = '96px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(emoji, 64, 72);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbf6ea'; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.fill();
+  g.translate(28, 28); g.scale(3, 3);
+  g.strokeStyle = '#1f2a4a'; g.lineWidth = 2; g.lineCap = 'round'; g.lineJoin = 'round';
+  const svg = ICONS[name] || '';
+  for (const m of svg.matchAll(/<(path|line|rect|circle|polygon)\b([^>]*)\/>/g)) {
+    const a = Object.fromEntries([...m[2].matchAll(/([\w-]+)="([^"]*)"/g)].map((x) => [x[1], x[2]]));
+    let d = '';
+    if (m[1] === 'path') d = a.d;
+    else if (m[1] === 'line') d = `M${a.x1} ${a.y1}L${a.x2} ${a.y2}`;
+    else if (m[1] === 'rect') { const x = +a.x || 0, y = +a.y || 0; d = `M${x} ${y}h${a.width}v${a.height}h${-a.width}Z`; }
+    else if (m[1] === 'circle') { const r = +a.r; d = `M${a.cx - r} ${a.cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`; }
+    else if (m[1] === 'polygon') d = 'M' + a.points.trim().split(/\s+/).join(' L') + 'Z';
+    g.stroke(new Path2D(d));
+  }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
@@ -88,12 +103,10 @@ function envelopeTexture() {
   g.beginPath(); g.moveTo(24, 26); g.lineTo(256, 190); g.lineTo(488, 26); g.stroke();
   g.beginPath(); g.moveTo(24, 312); g.lineTo(200, 170); g.moveTo(488, 312); g.lineTo(312, 170); g.stroke();
   // wax seal
-  const grd = g.createRadialGradient(248, 182, 6, 256, 190, 46);
-  grd.addColorStop(0, '#e2554c'); grd.addColorStop(1, '#8f1f1a');
-  g.fillStyle = grd; g.beginPath();
+  g.fillStyle = '#c8352e'; g.beginPath();
   for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2, r = k % 2 ? 44 : 48; g.lineTo(256 + Math.cos(a) * r, 190 + Math.sin(a) * r); }
   g.closePath(); g.fill();
-  g.fillStyle = '#f7d3c9'; g.font = '44px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('♥', 256, 192);
+  g.fillStyle = '#fbf6ea'; g.save(); g.translate(256 - 24, 190 - 22); g.scale(2, 2); g.fill(new Path2D('M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z')); g.restore();
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
 }
 
@@ -417,7 +430,7 @@ export class World {
       mesh = new THREE.Group();
       mesh.add(new THREE.Mesh(this.geo.ring, this.mat.ring));
       const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tex.warm, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(6, 6, 1); mesh.add(glow);
-      const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTexture(extra.icon), transparent: true, depthWrite: false })); icon.scale.set(1.3, 1.3, 1); mesh.add(icon);
+      const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTexture(extra.icon), transparent: true, depthWrite: false })); icon.scale.set(1.2, 1.2, 1); mesh.add(icon);
     } else if (kind === 'deco') { mesh = this.makeCloud(); mesh.scale.setScalar(1.6 + Math.random()); }
     const x = kind === 'deco' ? (Math.random() < 0.5 ? -1 : 1) * (3.5 + Math.random() * 5) : 0;
     mesh.position.set(x, LANE_BASE + y, SPAWN_Z);
@@ -445,7 +458,7 @@ export class World {
     const quietZone = this.nextCheckpoint < cps.length && this.progress > this.cpAt(this.nextCheckpoint) - 0.025;
     if (this.nextCheckpoint < cps.length && this.progress >= this.cpAt(this.nextCheckpoint) && !this.objects.some((o) => o.kind === 'ring')) {
       const cp = cps[this.nextCheckpoint];
-      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: cp.type === 'memory' ? '💌' : cp.type === 'song' ? '📼' : '🔢' });
+      this.spawn('ring', 1.4, { index: this.nextCheckpoint, icon: cp.type === 'memory' ? 'mail' : cp.type === 'song' ? 'music' : 'hash' });
       this.nextCheckpoint++;
     }
 

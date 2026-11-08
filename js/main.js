@@ -1,6 +1,9 @@
 import { World } from './world.js';
 import { loadContent, isPreview } from './content.js';
 import { sfx } from './sfx.js';
+import { icon, hydrateIcons } from './icons.js';
+
+hydrateIcons();
 
 const $ = (s) => document.querySelector(s);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -12,7 +15,7 @@ const content = await loadContent();
 const S = content.settings;
 const code = (c) => (c.code || c.name.slice(0, 3)).toUpperCase();
 
-document.title = `✉ For ${S.herName}`;
+document.title = `For ${S.herName}`;
 if (isPreview()) document.body.insertAdjacentHTML('beforeend', '<div class="preview-badge">PREVIEW · not published</div>');
 
 const world = new World($('#scene'), content);
@@ -34,7 +37,7 @@ function startMusic() {
 $('#mute-btn').addEventListener('click', (e) => {
   e.stopPropagation();
   soundOn = !soundOn; music.muted = !soundOn; sfx.muted = !soundOn;
-  $('#mute-btn').textContent = soundOn ? '🔊' : '🔇';
+  $('#mute-btn').innerHTML = icon(soundOn ? 'volume' : 'mute');
   if (soundOn) sfx.play('tap');
 });
 
@@ -79,7 +82,7 @@ $('#gate-form').addEventListener('submit', async (e) => {
     sessionStorage.setItem('unlocked', '1');
     runIntro();
   } else {
-    const msgs = ['RETURN TO SENDER', 'WRONG POSTCODE', 'SALAK 😌', 'TRY AGAIN ✉', 'dkdldk NO'];
+    const msgs = ['RETURN TO SENDER', 'WRONG POSTCODE', 'SALAK', 'TRY AGAIN', 'dkdldk NO'];
     err.textContent = msgs[(Math.random() * msgs.length) | 0];
     err.classList.remove('hidden'); err.style.animation = 'none'; void err.offsetWidth; err.style.animation = '';
     sfx.play('stamp');
@@ -108,7 +111,7 @@ async function runIntro() {
   const box = $('#tg-lines'); box.innerHTML = '';
   const lines = [...content.intro.lines];
   const first = lines[0] && !/^[^:]{1,30}:/.test(lines[0]) ? lines.shift() : '';
-  $('#tg-meta').textContent = `No. 0001 · ${first || ''} · ${S.cityA.name.toUpperCase()} → ${S.cityB.name.toUpperCase()}`;
+  $('#tg-meta').textContent = `No. 0001 · ${first || ''} · ${code(S.cityA)} – ${code(S.cityB)}`;
   await sleep(700);
   for (const line of lines) {
     const m = line.match(/^([^:]{1,30}):\s*(.*)$/);
@@ -140,12 +143,12 @@ $('#start-btn').addEventListener('click', () => { sfx.ensure(); sfx.play('board'
 function beginGame() {
   show(null);
   $('#hud-from').textContent = code(S.cityA); $('#hud-to').textContent = code(S.cityB);
-  $('#hud-stars').textContent = '★ 0';
+  $('#hud-stars').textContent = '0';
   world.startGame();
 }
 world.on('gameStarted', () => { $('#hud').classList.remove('hidden'); $('#touch-hint').classList.remove('hidden'); });
 world.on('firstInput', () => $('#touch-hint').classList.add('hidden'));
-world.on('stars', (n) => { $('#hud-stars').textContent = `★ ${n}`; });
+world.on('stars', (n) => { $('#hud-stars').textContent = String(n); });
 
 let lastKm = -1;
 (function hudLoop() {
@@ -153,7 +156,7 @@ let lastKm = -1;
   $('#progress-bar').style.width = `${p * 100}%`;
   $('#progress-plane').style.left = `${p * 100}%`;
   const km = Math.round(world.distanceKm * (1 - p));
-  if (km !== lastKm) { lastKm = km; $('#hud-km').textContent = km > 0 ? `${fmt(km)} km to go` : 'arrived ✉'; }
+  if (km !== lastKm) { lastKm = km; $('#hud-km').textContent = km > 0 ? `${fmt(km)} km to go` : 'arrived'; }
   requestAnimationFrame(hudLoop);
 })();
 
@@ -180,9 +183,9 @@ function postmarkDate(d = '') {
   if (m) { const mi = MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()); if (mi >= 0) return `${pad2(m[1])}·${pad2(mi + 1)}·${m[3].slice(2)}`; }
   m = d.match(/([a-z]+)\s+(\d{4})/i);
   if (m) return `${m[1].slice(0, 3).toUpperCase()}·${m[2].slice(2)}`;
-  return '♥';
+  return '';
 }
-const continueBtn = '<div class="card-actions"><button class="btn-red" data-continue>✉ Keep delivering</button></div>';
+const continueBtn = `<div class="card-actions"><button class="btn-red" data-continue>${icon('mail')}<span>Keep going</span></button></div>`;
 function bindContinue(done) { const b = card.querySelector('[data-continue]'); b.onclick = () => { sfx.play('tap'); done(); }; return b; }
 
 function openCheckpoint(cp, i, done) {
@@ -196,13 +199,13 @@ function openMemory(cp, i, done) {
   const city = cp.quoteBy === 'me' ? S.cityB : S.cityA;
   const pic = cp.image
     ? `<img src="${esc(cp.image)}" alt="" />`
-    : '<span>your photo here</span><small>add it in the editor</small>';
+    : `${icon('image', { size: '34px', stroke: 1.5 })}<small>photo goes here</small>`;
   openModal(`
     <div class="postcard airmail">
-      <div class="postmark pc-postmark"><span>${esc(city.name.toUpperCase())}</span><b>${esc(postmarkDate(cp.date))}</b><span>✉</span></div>
+      <div class="postmark pc-postmark"><span>${esc(city.name.toUpperCase())}</span><b>${esc(postmarkDate(cp.date))}</b><span>· · ·</span></div>
       <div class="pc-no">No. ${pad2(i + 1)} — ${esc(cp.date || '')}</div>
       <h2 class="pc-title">${esc(cp.title)}</h2>
-      <div class="polaroid"><div class="tape"></div><div class="pic">${pic}</div><div class="caption">${esc(cp.caption || '♥')}</div></div>
+      <div class="polaroid"><div class="tape"></div><div class="pic">${pic}</div><div class="caption">${esc(cp.caption || '')}</div></div>
       ${cp.quote ? `<p class="pc-quote">“${esc(cp.quote)}”</p><p class="pc-by">— ${esc(whoName(cp.quoteBy))}</p>` : ''}
       <p class="pc-text">${esc(cp.text)}</p>
       ${continueBtn}
@@ -214,12 +217,12 @@ function openMemory(cp, i, done) {
 function openNumber(cp, i, done) {
   openModal(`
     <div class="telegram-card">
-      <div class="tg-head"><span>TELEGRAM</span><span>?</span><span>No. ${pad2(i + 1)}</span></div>
+      <div class="tg-head"><span>TELEGRAM</span><span>No. ${pad2(i + 1)}</span></div>
       <p class="tq-q">${esc(cp.question)}</p>
       ${cp.hint ? `<p class="tq-hint">${esc(cp.hint)}</p>` : ''}
       <form data-form>
         <input class="num-input" inputmode="numeric" placeholder="your guess" aria-label="your guess" />
-        <div class="card-actions"><button class="btn-red" type="submit">SEND GUESS ✉</button></div>
+        <div class="card-actions"><button class="btn-red" type="submit">${icon('send')}<span>Send</span></button></div>
       </form>
       <div data-result></div>
     </div>`);
@@ -233,7 +236,7 @@ function openNumber(cp, i, done) {
     const a = Number(cp.answer), off = Math.abs(g - a) / Math.max(1, a);
     const [label, color, good] = off === 0 ? ['EXACTLY?!', 'blue', true]
       : off <= 0.05 ? ['SO CLOSE', 'blue', true]
-      : off <= 0.25 ? ['WARM 🔥', 'blue', true]
+      : off <= 0.25 ? ['WARM', 'blue', true]
       : off <= 0.6 ? ['NOT QUITE', 'red', false]
       : [g > a ? 'WAY TOO HIGH' : 'WAY TOO LOW', 'red', false];
     form.remove();
@@ -279,9 +282,9 @@ function openSong(cp, i, done) {
         <div class="label"><span>mixtape for ${esc(S.herName)}</span></div>
         <div class="window"><div class="reel"></div><div class="reel"></div></div>
         <div class="bottom"></div>
-        ${cp.audio ? '<button class="play-btn" data-play aria-label="play">▶</button>' : ''}
+        ${cp.audio ? `<button class="play-btn" data-play aria-label="play">${icon('play')}</button>` : ''}
       </div>
-      ${cp.audio ? '' : '<p class="no-audio">♪ song clip placeholder: upload a 10–20 s clip in the editor</p>'}
+      ${cp.audio ? '' : `<p class="no-audio">${icon('music')} song clip goes here</p>`}
       <div class="options">${opts}</div>
       <div data-result></div>
     </div>`);
@@ -289,11 +292,11 @@ function openSong(cp, i, done) {
   const play = card.querySelector('[data-play]'), cas = card.querySelector('[data-cassette]');
   if (play) {
     play.onclick = () => {
-      if (clip && !clip.paused) { clip.pause(); play.textContent = '▶'; cas.classList.remove('playing'); return; }
+      if (clip && !clip.paused) { clip.pause(); play.innerHTML = icon('play'); cas.classList.remove('playing'); return; }
       if (S.music) music.pause();
       clip = clip || new Audio(cp.audio); clip.muted = !soundOn;
-      clip.play().catch(() => {}); play.textContent = '❚❚'; cas.classList.add('playing');
-      clip.onended = () => { play.textContent = '▶'; cas.classList.remove('playing'); };
+      clip.play().catch(() => {}); play.innerHTML = icon('pause'); cas.classList.add('playing');
+      clip.onended = () => { play.innerHTML = icon('play'); cas.classList.remove('playing'); };
     };
   }
   card.querySelectorAll('.option').forEach((b) => {
@@ -303,7 +306,7 @@ function openSong(cp, i, done) {
       if (!right) b.classList.add('wrong');
       sfx.play('stamp'); setTimeout(() => sfx.play(right ? 'correct' : 'wrong'), 180);
       card.querySelector('[data-result]').innerHTML = `
-        <div class="tq-reveal">${rubberStamp(right ? 'YOU KNOW US ♥' : 'NOPE 😭', right ? 'blue' : 'red')}</div>
+        <div class="tq-reveal">${rubberStamp(right ? 'YOU KNOW US' : 'NOPE', right ? 'blue' : 'red')}</div>
         <p class="tq-text">${esc(cp.reveal || '')}</p>
         ${continueBtn}`;
       bindContinue(done).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -325,7 +328,7 @@ function videoHTML(src) {
   let inner;
   const yt = src && src.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{6,})/);
   const drive = src && src.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
-  if (!src) inner = '<div class="video-placeholder"><b>🎬</b><span>video placeholder</span><span>upload it in the editor</span></div>';
+  if (!src) inner = `<div class="video-placeholder">${icon('film', { size: '36px', stroke: 1.5 })}<span>video goes here</span></div>`;
   else if (yt) inner = `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="video"></iframe>`;
   else if (drive) inner = `<iframe src="https://drive.google.com/file/d/${drive[1]}/preview" allow="autoplay; fullscreen" allowfullscreen title="video"></iframe>`;
   else inner = `<video src="${esc(src)}" controls playsinline preload="metadata"></video>`;
@@ -341,9 +344,9 @@ function showFinale() {
   $('#letter-body').innerHTML = (f.letter || []).map((p) => `<p>${esc(p)}</p>`).join('');
   $('#letter-sign').textContent = f.signature;
   $('#video-wrap').innerHTML = videoHTML(f.video);
-  $('#closing').textContent = f.closing;
+  $('#closing').innerHTML = `${esc(f.closing)} ${icon('heart', { cls: 'closing-heart' })}`;
   const n = world.starsCollected;
-  $('#finale-stats').textContent = n ? `★ ${n} stars caught on the way. Each one is an "I love you" I owe you.` : '';
+  $('#finale-stats').innerHTML = n ? `${icon('star')} ${n} stars caught = ${n} I-love-yous I owe you` : '';
   $('#letter').classList.add('hidden');
   $('#env').classList.remove('open');
   $('#env-wrap').classList.remove('hidden');

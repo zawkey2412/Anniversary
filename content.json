@@ -10,7 +10,7 @@
       "081125",
       "091125"
     ],
-    "gateQuestion": "the night our story started",
+    "gateQuestion": "the night it started",
     "gateHint": "dd.mm",
     "music": "",
     "cityA": {
@@ -39,8 +39,8 @@
       "Uqi: Well... He's here then"
     ],
     "title": "Moonlight Courier",
-    "subtitle": "One very important message has to travel 9,571 km tonight, from Istanbul to Bandung. Only you can deliver it.",
-    "howTo": "HOLD to fly up · LET GO to float down · catch the stars · dodge the clouds · fly through the stamped rings"
+    "subtitle": "One message. Only you can deliver it.",
+    "howTo": "Hold to rise · let go to glide · catch the stars"
   },
   "checkpoints": [
     {
@@ -49,17 +49,17 @@
       "title": "The first message",
       "quote": "Im looking for the guy i love is he here????",
       "quoteBy": "you",
-      "text": "And somehow the guy you were looking for was right here. One year later, he still is.",
+      "text": "And he was. Still is.",
       "image": "",
       "caption": "where it started"
     },
     {
       "type": "number",
-      "question": "How many messages did we send each other this year?",
-      "hint": "Count everything. Even the 'byeeee's.",
+      "question": "How many messages did we send this year?",
+      "hint": "Even the 'byeeee's count.",
       "answer": 53096,
       "unit": "messages",
-      "reveal": "53,096 messages. And at least 4,783 photos, stickers and voice notes on top of that."
+      "reveal": "Plus 4,783 photos, stickers and voice notes."
     },
     {
       "type": "memory",
@@ -67,14 +67,14 @@
       "title": "Ay Yüzlüm",
       "quote": "smth like 'pretty like the moon' and the translation is 'my moon-faced one'",
       "quoteBy": "you",
-      "text": "That's why this whole thing happens under the moon. It's your name in my phone, and it's the one thing we can both look at, at the same time.",
+      "text": "Your name in my phone. The one thing we both look at, at the same time.",
       "image": "",
       "caption": "my moon-faced one"
     },
     {
       "type": "song",
-      "question": "Guess the song 🎧",
-      "hint": "One of the songs we sent each other.",
+      "question": "Guess the song",
+      "hint": "One we sent each other.",
       "audio": "",
       "options": [
         "Song title A",
@@ -83,7 +83,7 @@
         "Song title D"
       ],
       "answer": 0,
-      "reveal": "Placeholder – write why this song reminds you of her."
+      "reveal": "Placeholder: one line about why this song is ours."
     },
     {
       "type": "memory",
@@ -91,17 +91,17 @@
       "title": "Our first month",
       "quote": "Oh now its our first month together btww",
       "quoteBy": "you",
-      "text": "I said \"You mean three months\". You said \"6 actually\". Neither of us was counting right, because it already felt longer.",
+      "text": "I said three. You said six. We both lost count early.",
       "image": "",
-      "caption": "month one ♥"
+      "caption": "month one"
     },
     {
       "type": "number",
       "question": "How many times did I call you \"salak\"?",
-      "hint": "Be honest. You deserved most of them.",
+      "hint": "Be honest.",
       "answer": 310,
       "unit": "times",
-      "reveal": "310 times. But you called me salak 217 times, so we're both guilty 😌"
+      "reveal": "You called me salak 217 times. We're even-ish."
     },
     {
       "type": "memory",
@@ -109,17 +109,17 @@
       "title": "My birthday",
       "quote": "connection is not about proximity, but about hearts choosing each other again and again.",
       "quoteBy": "you",
-      "text": "You wrote me a whole letter from Türkiye. I still read it.",
+      "text": "A whole letter, from Türkiye. I still read it.",
       "image": "",
       "caption": "24.12"
     },
     {
       "type": "number",
-      "question": "Your longest \"I love you sooooo…\" message. How many o's?",
-      "hint": "22 September 2026, 07:57. You really held that key.",
+      "question": "Your longest \"I love you sooo…\" — how many o's?",
+      "hint": "22 Sept, 07:57.",
       "answer": 7201,
       "unit": "o's",
-      "reveal": "7,201 o's. I tried to answer with \"so so so so…\" but you still won."
+      "reveal": "I tried to answer. You still won."
     },
     {
       "type": "memory",
@@ -127,14 +127,14 @@
       "title": "Uno nights",
       "quote": "But you are the loser always💜",
       "quoteBy": "you",
-      "text": "The only game where losing to you still feels like winning.",
+      "text": "Losing to you never felt like losing.",
       "image": "",
-      "caption": "loser (you) ♥"
+      "caption": "loser (you)"
     },
     {
       "type": "song",
-      "question": "One more song 🎶",
-      "hint": "This one is from me to you.",
+      "question": "One more song",
+      "hint": "From me, to you.",
       "audio": "",
       "options": [
         "Song title A",
@@ -143,7 +143,7 @@
         "Song title D"
       ],
       "answer": 1,
-      "reveal": "Placeholder – write why this song is yours."
+      "reveal": "Placeholder: one line about why this song is ours."
     },
     {
       "type": "memory",
@@ -151,24 +151,24 @@
       "title": "Good night, aşkım",
       "quote": "Sweet dreamsssss. Dream aboutmeeee",
       "quoteBy": "you",
-      "text": "4 hours apart, you always fall asleep first, and I always stay up a little longer just to say it back.",
+      "text": "You fall asleep first. I stay up to say it back.",
       "image": "",
       "caption": "every night"
     }
   ],
   "finale": {
-    "delivered": "Delivered ✓",
-    "line": "9,571 km. 4 hours apart. And every single message still found its way to you.",
+    "delivered": "Delivered",
+    "line": "9,571 km apart. Every message still found you.",
     "letterTitle": "Happy first anniversary, Ay Yüzlüm",
     "letter": [
-      "One year ago you came looking for me, and I've been here ever since.",
-      "We have never been in the same room, but you are still the first person I want to tell everything to. The good things, the stupid things, the 3 AM things.",
-      "Thank you for every good morning, every 'salak', every 'dkdldk', and every time you stayed up even when you were sleepy.",
-      "I love you, aşkım. Today, and every night under the same moon."
+      "One year ago you came looking for me. I've been here ever since.",
+      "We've never been in the same room, yet you're the first person I tell everything to. The good things, the stupid things, the 3 AM things.",
+      "Thank you for every good morning, every salak, every dkdldk.",
+      "I love you, aşkım. Every night, under the same moon."
     ],
     "signature": "— Uqi",
     "video": "",
-    "videoNote": "A little video for you 🎬",
-    "closing": "İyi ki varsın 💜"
+    "videoNote": "a little video for you",
+    "closing": "İyi ki varsın"
   }
 }
