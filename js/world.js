@@ -458,8 +458,8 @@ export class World {
         clampT(); this.emit('firstInput');
       } else if (this.dragging && this.last) {
         // touch: relative drag, so the finger never covers the envelope
-        this.target.x += ((e.clientX - this.last.x) / w) * LANE_X * 2 * 1.5;
-        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 2.6;
+        this.target.x += ((e.clientX - this.last.x) / w) * LANE_X * 2 * 1.05;
+        this.target.y -= ((e.clientY - this.last.y) / h) * (LANE_MAX - LANE_MIN) * 1.8;
         this.last = { x: e.clientX, y: e.clientY }; clampT();
       }
     });
@@ -476,14 +476,18 @@ export class World {
     this.progress = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
     this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.target.x = 0; this.target.y = 1.2;
-    this.spawnClock = 0.6; this.starClock = 0.8; this.heartClock = 9; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
+    this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.calm = 2.5; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
     this.camFrom.pos.copy(this.camera.position); this.camFrom.look.copy(this.camLook);
     this.quatFrom = this.globe.quaternion.clone();
     this.transition = 0; this.mode = 'toGame'; this.paused = false;
     this.arc.geometry.setDrawRange(0, 0);
   }
 
-  pause(v) { this.paused = v; if (v) { this.dragging = false; this.keys?.clear(); } }
+  pause(v) {
+    this.paused = v;
+    if (v) { this.dragging = false; this.keys?.clear(); }
+    else if (this.mode === 'game') this.calm = 3; // give her ~3 s to find her pace again
+  }
 
   toFinale() {
     this.mode = 'toFinale'; this.transition = 0;
@@ -534,23 +538,25 @@ export class World {
     else if (pattern < 0.55) { const y = ry(); for (let i = 0; i < 6; i++) pts.push([-LANE_X + 0.4 + i * ((LANE_X * 2 - 0.8) / 5), y, i]); } // sweep across
     else if (pattern < 0.8) { const x = rx(); for (let i = 0; i < 6; i++) pts.push([x, 0.25 + Math.sin(i / 5 * Math.PI) * (LANE_MAX - 0.5), i]); } // arc
     else { const x = THREE.MathUtils.clamp(rx(), -1.4, 1.4), y = THREE.MathUtils.clamp(ry(), 0.9, LANE_MAX - 0.9); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pts.push([x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, 0]); } } // ring
-    for (const [x, y, k] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z -= k * 1.4; }
+    for (const [x, y, k] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z -= k * 1.1; }
   }
 
   updateGame(dt) {
-    const speedFactor = this.hitTimer > 0 ? 0.55 : 1;
+    this.calm = Math.max(0, (this.calm || 0) - dt);
+    const ease = this.calm > 0 ? 0.45 + 0.55 * (1 - this.calm / 3) : 1;   // ease back up after a checkpoint
+    const speedFactor = (this.hitTimer > 0 ? 0.6 : 1) * ease;
     const flightSeconds = Math.max(105, this.content.checkpoints.length * 8);
     this.progress = Math.min(1, this.progress + (dt * speedFactor) / flightSeconds);
-    const v = 10 * speedFactor;
+    const v = 6.2 * speedFactor;
 
     // steering: keys nudge the target, the envelope eases toward it
     const kx = (this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0);
     const ky = (this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.keys.has('Space') ? 1 : 0) - (this.keys.has('ArrowDown') || this.keys.has('KeyS') ? 1 : 0);
     if (kx || ky) {
-      this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 4.5 * dt, -LANE_X, LANE_X);
-      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 4 * dt, LANE_MIN, LANE_MAX);
+      this.target.x = THREE.MathUtils.clamp(this.target.x + kx * 2.8 * dt, -LANE_X, LANE_X);
+      this.target.y = THREE.MathUtils.clamp(this.target.y + ky * 2.4 * dt, LANE_MIN, LANE_MAX);
     }
-    const k = 1 - Math.exp(-dt * 11);
+    const k = 1 - Math.exp(-dt * 4.5);
     const nx = this.courierX + (this.target.x - this.courierX) * k, ny = this.courierY + (this.target.y - this.courierY) * k;
     this.courierVx = (nx - this.courierX) / Math.max(dt, 1e-3); this.courierVy = (ny - this.courierY) / Math.max(dt, 1e-3);
     this.courierX = nx; this.courierY = ny;
@@ -569,14 +575,15 @@ export class World {
     // spawning
     this.spawnClock -= dt * speedFactor; this.starClock -= dt * speedFactor; this.heartClock -= dt * speedFactor;
     const arriving = this.progress > 0.965;
-    if (!quietZone && !arriving && this.spawnClock <= 0) {
-      this.spawnClock = 0.7 + Math.random() * 0.6;
-      const n = Math.random() < 0.3 ? 2 : 1;
+    const calm = this.calm > 0;
+    if (!calm && !quietZone && !arriving && this.spawnClock <= 0) {
+      this.spawnClock = 1.2 + Math.random() * 0.9;
+      const n = Math.random() < 0.2 ? 2 : 1;
       for (let i = 0; i < n; i++) this.spawn('cloud', (Math.random() * 2 - 1) * LANE_X, LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4));
       if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!arriving && this.starClock <= 0) { this.starClock = 1.6 + Math.random() * 0.8; this.spawnStars(); }
-    if (!quietZone && !arriving && this.heartClock <= 0) {
+    if (!calm && !arriving && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
+    if (!calm && !quietZone && !arriving && this.heartClock <= 0) {
       this.heartClock = 13 + Math.random() * 8;
       this.spawn('heart', (Math.random() * 2 - 1) * (LANE_X - 0.4), 0.4 + Math.random() * (LANE_MAX - 0.8));
     }
@@ -604,13 +611,16 @@ export class World {
       } else if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
         o.alive = false; this.hitCloud(cpos);
       } else if (o.kind === 'ring' && z > -0.1) {
-        o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.emit('checkpoint', o.index);
+        o.alive = false; this.lane.remove(o.mesh); this.sfx.play('ring'); this.clearLane = true; this.emit('checkpoint', o.index);
       }
     }
     this.objects = this.objects.filter((o) => {
+      if (this.clearLane && o.kind !== 'deco') { this.lane.remove(o.mesh); return false; } // fresh start after a checkpoint
       if (o.mesh.position.z > KILL_Z) { this.lane.remove(o.mesh); return false; }
       return o.alive || o.kind === 'cloud';
     });
+
+    this.clearLane = false;
 
     // dust
     const dp = this.dust.geometry.attributes.position;
