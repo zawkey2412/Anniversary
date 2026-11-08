@@ -671,21 +671,15 @@ export class World {
       if (o.kind === 'cloud') o.mesh.material.rotation = Math.sin(this.time + o.x) * 0.04;
       if (!o.alive) continue;
       const z = o.mesh.position.z;
-      // capture: once a star/heart is within reach and less than ~1 s ahead, it shoots straight into the
-      // envelope (x, y AND depth) in under 0.2 s, so nothing ever hangs in front of the letter
-      if ((o.kind === 'star' || o.kind === 'heart') && !o.flying && z > -4.5 && z < 1.2) {
+      // capture: the moment a star/heart is within reach (and less than ~1 s ahead) it is absorbed on the spot,
+      // no travel animation, so nothing ever piles up in front of the letter
+      if ((o.kind === 'star' || o.kind === 'heart') && z > -4.5 && z < 1.2) {
         const reach = o.kind === 'heart' ? 1.7 : 1.5;
-        if (Math.hypot(o.x - this.courierX, o.y - this.courierY) < reach) { o.flying = true; o.flyT = 0; }
-      }
-      if (o.flying) {
-        o.flyT += dt;
-        o.mesh.position.lerp(cpos, 1 - Math.exp(-dt * 28));
-        o.mesh.scale.multiplyScalar(1 - Math.min(0.5, dt * 4));      // shrink as it goes in
-        if (o.mesh.position.distanceTo(cpos) < 0.35 || o.flyT > 0.18) {
+        if (Math.hypot(o.x - this.courierX, o.y - this.courierY) < reach) {
           o.alive = false; this.lane.remove(o.mesh);
           if (o.kind === 'star') this.collectStar(cpos); else this.collectHeart(cpos);
+          continue;
         }
-        continue;
       }
       const dz = Math.abs(z);
       if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
