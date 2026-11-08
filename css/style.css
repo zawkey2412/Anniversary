@@ -355,9 +355,8 @@ button { font: inherit; }
 .stick-knob {
   width: 52px; height: 52px; color: var(--paper); font-size: 20px; background: var(--red); display: flex; align-items: center; justify-content: center;
   clip-path: polygon(50% 0%, 61% 6%, 74% 3%, 81% 14%, 94% 18%, 94% 31%, 100% 42%, 95% 54%, 99% 67%, 90% 76%, 87% 89%, 74% 92%, 64% 100%, 50% 96%, 36% 100%, 26% 92%, 13% 89%, 10% 76%, 1% 67%, 5% 54%, 0% 42%, 6% 31%, 6% 18%, 19% 14%, 26% 3%, 39% 6%);
-  transition: transform .12s ease-out;
 }
-.stick.active .stick-knob { transition: none; }
+
 
 /* ---------- clickable photos + lightbox ---------- */
 .polaroid .pic { position: relative; }

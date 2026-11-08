@@ -618,10 +618,9 @@ export class World {
       nx = this.courierX + (this.target.x - this.courierX) * kx2; ny = this.courierY + (this.target.y - this.courierY) * ky2;
       this.velX = 0; this.velY = 0;
     } else {
-      // joystick / keys: the stick sets the speed directly, with a very short ramp (~0.15 s) so it never feels floaty
-      const r = 1 - Math.exp(-dt * 20);
-      this.velX = (this.velX || 0) + (kx * MAX_VX - (this.velX || 0)) * r;
-      this.velY = (this.velY || 0) + (ky * MAX_VY - (this.velY || 0)) * r;
+      // joystick / keys: stick deflection = speed, applied the same frame
+      this.velX = kx * MAX_VX;   // no smoothing: the stick sets the speed instantly
+      this.velY = ky * MAX_VY;
       nx = THREE.MathUtils.clamp(this.courierX + this.velX * dt, -LANE_X, LANE_X);
       ny = THREE.MathUtils.clamp(this.courierY + this.velY * dt, LANE_MIN, LANE_MAX);
       if (nx === -LANE_X || nx === LANE_X) this.velX = 0;
@@ -673,14 +672,14 @@ export class World {
       if (!o.alive) continue;
       const z = o.mesh.position.z;
       // magnet: nearby stars and hearts drift into the envelope
-      if ((o.kind === 'star' || o.kind === 'heart') && z > -5 && z < 1) {
+      if ((o.kind === 'star' || o.kind === 'heart') && z > -6 && z < 1.2) {
         const d = Math.hypot(o.x - this.courierX, o.y - this.courierY);
-        if (d < 1.05) { const m = 1 - Math.exp(-dt * 8); o.x += (this.courierX - o.x) * m; o.y += (this.courierY - o.y) * m; o.mesh.position.x = o.x; if (o.kind === 'star') o.mesh.position.y = LANE_BASE + o.y; }
+        if (d < 1.5) { const m = 1 - Math.exp(-dt * 16); o.x += (this.courierX - o.x) * m; o.y += (this.courierY - o.y) * m; o.mesh.position.x = o.x; if (o.kind === 'star') o.mesh.position.y = LANE_BASE + o.y; }
       }
       const dz = Math.abs(z), d2 = Math.hypot(o.x - this.courierX, o.y - this.courierY);
-      if (o.kind === 'star' && dz < 0.7 && d2 < 0.65) {
+      if (o.kind === 'star' && dz < 1.0 && d2 < 0.9) {
         o.alive = false; this.lane.remove(o.mesh); this.collectStar(cpos);
-      } else if (o.kind === 'heart' && dz < 0.8 && d2 < 0.9) {
+      } else if (o.kind === 'heart' && dz < 1.0 && d2 < 1.1) {
         o.alive = false; this.lane.remove(o.mesh); this.collectHeart(cpos);
       } else if (o.kind === 'cloud' && dz < 0.55 && Math.abs(o.x - this.courierX) < 0.75 && Math.abs(o.y - this.courierY) < 0.45 && this.invuln <= 0) {
         o.alive = false; this.hitCloud(cpos);
@@ -776,8 +775,8 @@ export class World {
       this.globe.quaternion.copy(this.orientGame(this.progress));
       this.setArcProgress(this.progress);
       camPos = gc.pos.clone(); camLook = gc.look.clone();
-      camPos.x += this.courierX * 0.5; camLook.x += this.courierX * 0.65;
-      camPos.y += (this.courierY - 1.2) * 0.35; camLook.y += (this.courierY - 1.2) * 0.25;
+      camPos.x += this.courierX * 0.15; camLook.x += this.courierX * 0.2;
+      camPos.y += (this.courierY - 1.2) * 0.12; camLook.y += (this.courierY - 1.2) * 0.1;
       if (this.hitTimer > 0) { camPos.x += Math.sin(t * 55) * 0.09 * this.hitTimer; camPos.y += Math.cos(t * 47) * 0.06 * this.hitTimer; }
       this.moon.position.set(7, LANE_BASE + 13, -70);
       // courier: banks into turns, spins when hit
