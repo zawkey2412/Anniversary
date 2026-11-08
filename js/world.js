@@ -6,6 +6,8 @@ import { ICONS } from './icons.js';
 const R = 10;                // globe radius
 const LANE_MIN = 0, LANE_MAX = 2.8, LANE_BASE = R + 1.15, LANE_X = 2.3;
 const FLY_SPEED = 6.2, GRACE_DIST = FLY_SPEED * 2; // 2 seconds of flight
+const SEG_DIST = FLY_SPEED * 10, FINAL_DIST = FLY_SPEED * 6;  // ~10 s of flight between checkpoints, ~6 s after the last
+const SAFE_Z = 4, SAFE_XY = 1.5;                              // stars and clouds keep this much space between them
 const SPAWN_Z = -48, KILL_Z = 7;
 const DEG = Math.PI / 180;
 
@@ -474,7 +476,7 @@ export class World {
   // ---------- modes ----------
   startGame() {
     this.sfx.ensure();
-    this.progress = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
+    this.progress = 0; this.travel = 0; this.starsCollected = 0; this.nextCheckpoint = 0;
     this.objects.forEach((o) => this.lane.remove(o.mesh)); this.objects = [];
     this.courierX = 0; this.courierY = 1.2; this.courierVx = 0; this.courierVy = 0; this.target.x = 0; this.target.y = 1.2;
     this.spawnClock = 0; this.starClock = 0; this.heartClock = 12; this.hits = 0; this.combo = 0; this.bestCombo = 0; this.invuln = 0; this.spin = 0; this.hitTimer = 0;
@@ -531,21 +533,45 @@ export class World {
     this.objects.push(o); return o;
   }
 
-  spawnStars() {
+  // true if any object of these kinds sits near (x, y) at depth z
+  crowded(x, y, z, kinds, dz = SAFE_Z, dxy = SAFE_XY) {
+    return this.objects.some((o) => o.alive && kinds.includes(o.kind) && Math.abs(o.mesh.position.z - z) < dz && Math.hypot(o.x - x, o.y - y) < dxy);
+  }
+
+  starPattern() {
     const rx = () => (Math.random() * 2 - 1) * (LANE_X - 0.3), ry = () => 0.3 + Math.random() * (LANE_MAX - 0.6);
     const pattern = Math.random(), pts = [];
     if (pattern < 0.3) { const x = rx(), y = ry(); for (let i = 0; i < 5; i++) pts.push([x, y, i]); }                         // straight line
     else if (pattern < 0.55) { const y = ry(); for (let i = 0; i < 6; i++) pts.push([-LANE_X + 0.4 + i * ((LANE_X * 2 - 0.8) / 5), y, i]); } // sweep across
     else if (pattern < 0.8) { const x = rx(); for (let i = 0; i < 6; i++) pts.push([x, 0.25 + Math.sin(i / 5 * Math.PI) * (LANE_MAX - 0.5), i]); } // arc
     else { const x = THREE.MathUtils.clamp(rx(), -1.4, 1.4), y = THREE.MathUtils.clamp(ry(), 0.9, LANE_MAX - 0.9); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pts.push([x + Math.cos(a) * 0.8, y + Math.sin(a) * 0.8, 0]); } } // ring
-    for (const [x, y, k] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z -= k * 1.1; }
+    return pts.map(([x, y, k]) => [x, y, SPAWN_Z - k * 1.1]);
+  }
+
+  spawnStars() {
+    for (let tries = 0; tries < 8; tries++) {
+      const pts = this.starPattern();
+      if (pts.some(([x, y, z]) => this.crowded(x, y, z, ['cloud']))) continue; // never place stars next to a cloud
+      for (const [x, y, z] of pts) { const o = this.spawn('star', x, y); o.mesh.position.z = z; }
+      return;
+    }
+  }
+
+  spawnCloud() {
+    for (let tries = 0; tries < 10; tries++) {
+      const x = (Math.random() * 2 - 1) * LANE_X, y = LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4);
+      if (this.crowded(x, y, SPAWN_Z, ['star', 'heart']) || this.crowded(x, y, SPAWN_Z, ['cloud'], 3, 1.2)) continue;
+      return this.spawn('cloud', x, y);
+    }
+    return null;
   }
 
   updateGame(dt) {
     const speedFactor = this.hitTimer > 0 ? 0.6 : 1;
-    const flightSeconds = Math.max(105, this.content.checkpoints.length * 8);
-    this.progress = Math.min(1, this.progress + (dt * speedFactor) / flightSeconds);
     const v = FLY_SPEED * speedFactor;
+    const cps = this.content.checkpoints, n = cps.length, total = n * SEG_DIST + FINAL_DIST;
+    this.travel += v * dt;
+    this.progress = Math.min(1, this.travel / total);
 
     // steering: keys nudge the target, the envelope eases toward it
     const kx = (this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? 1 : 0);
@@ -561,10 +587,9 @@ export class World {
     this.hitTimer = Math.max(0, this.hitTimer - dt); this.invuln = Math.max(0, this.invuln - dt);
     if (this.combo && this.time - this.lastStarAt > 2.2) this.combo = 0;
 
-    // checkpoints
-    const cps = this.content.checkpoints;
-    const quietZone = this.nextCheckpoint < cps.length && this.progress > this.cpAt(this.nextCheckpoint) - 0.025;
-    if (this.nextCheckpoint < cps.length && this.progress >= this.cpAt(this.nextCheckpoint) && !this.objects.some((o) => o.kind === 'ring')) {
+    // checkpoints are placed by distance: ring i reaches her after (i + 1) * SEG_DIST of flight
+    const spawnLead = -SPAWN_Z;                       // distance from spawn point to the envelope
+    if (this.nextCheckpoint < n && this.travel >= (this.nextCheckpoint + 1) * SEG_DIST - spawnLead) {
       const cp = cps[this.nextCheckpoint];
       this.spawn('ring', 0, 1.4, { index: this.nextCheckpoint, icon: { memory: 'mail', song: 'music', number: 'hash', choice: 'help' }[cp.type] || 'mail' });
       this.nextCheckpoint++;
@@ -572,17 +597,22 @@ export class World {
 
     // spawning
     this.spawnClock -= dt * speedFactor; this.starClock -= dt * speedFactor; this.heartClock -= dt * speedFactor;
-    const arriving = this.progress > 0.965;
+    // what is spawned now reaches her after spawnLead more distance; keep that clear of rings and the landing
+    const arriveAt = this.travel + spawnLead;
+    const nearRing = (before, after) => { for (let i = 0; i < n; i++) { const d = (i + 1) * SEG_DIST - arriveAt; if (d < before && d > -after) return true; } return false; };
+    const arriving = arriveAt > total - 3;
+    const quietZone = nearRing(8, 4);                 // no clouds/hearts just before or right after a ring
     if (!quietZone && !arriving && this.spawnClock <= 0) {
       this.spawnClock = 1.2 + Math.random() * 0.9;
-      const n = Math.random() < 0.2 ? 2 : 1;
-      for (let i = 0; i < n; i++) this.spawn('cloud', (Math.random() * 2 - 1) * LANE_X, LANE_MIN + 0.2 + Math.random() * (LANE_MAX - 0.4));
+      const count = Math.random() < 0.2 ? 2 : 1;
+      for (let i = 0; i < count; i++) this.spawnCloud();
       if (Math.random() < 0.45) { const side = Math.random() < 0.5 ? -1 : 1; this.spawn('deco', side * (6 + Math.random() * 5), -2.2 + Math.random() * 2); }
     }
-    if (!arriving && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
+    if (!arriving && !nearRing(4, 3) && this.starClock <= 0) { this.starClock = 2.4 + Math.random() * 1.0; this.spawnStars(); }
     if (!quietZone && !arriving && this.heartClock <= 0) {
       this.heartClock = 13 + Math.random() * 8;
-      this.spawn('heart', (Math.random() * 2 - 1) * (LANE_X - 0.4), 0.4 + Math.random() * (LANE_MAX - 0.8));
+      const hx = (Math.random() * 2 - 1) * (LANE_X - 0.4), hy = 0.4 + Math.random() * (LANE_MAX - 0.8);
+      if (!this.crowded(hx, hy, SPAWN_Z, ['cloud'])) this.spawn('heart', hx, hy); else this.heartClock = 1;
     }
 
     // move + collide
@@ -625,7 +655,7 @@ export class World {
     for (let i = 0; i < dp.count; i++) { let z = dp.getZ(i) + v * 1.4 * dt; if (z > KILL_Z) z = SPAWN_Z; dp.setZ(i, z); }
     dp.needsUpdate = true;
 
-    if (this.progress >= 1 && this.nextCheckpoint >= cps.length && !this.objects.some((o) => o.kind === 'ring')) {
+    if (this.travel >= total && this.nextCheckpoint >= n && !this.objects.some((o) => o.kind === 'ring')) {
       this.mode = 'arrived'; this.emit('arrived');
     }
   }
@@ -663,8 +693,6 @@ export class World {
     this.emit('float', { text: lost ? `-${lost}` : 'oof', kind: 'hit' });
     this.emit('stars', this.starsCollected); this.emit('bump');
   }
-
-  cpAt(i) { const n = this.content.checkpoints.length; return 0.04 + (i + 0.5) * (0.9 / n); }
 
   setArcProgress(t) {
     const segs = Math.floor(t * this.arcSegments);
